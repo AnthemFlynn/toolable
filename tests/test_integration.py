@@ -340,3 +340,23 @@ def test_tool_returns_non_serializable(monkeypatch, capsys):
     # Should catch JSON serialization error
     assert response["status"] == "error"
     assert response["error"]["code"] == "INTERNAL"
+
+
+def test_sample_via_flag_configuration(monkeypatch, capsys):
+    """Test --sample-via flag configures sampling."""
+    from toolable.sampling import _sample_config
+
+    @toolable(summary="Test")
+    def my_tool():
+        from toolable.sampling import _sample_config
+        return {"via": _sample_config["via"]}
+
+    cli = AgentCLI(my_tool)
+    monkeypatch.setattr(sys, "argv", ["my_tool", "--sample-via", "http://localhost:8000", "{}"])
+    cli.run()
+
+    captured = capsys.readouterr()
+    response = json.loads(captured.out)
+
+    # Verify configuration was applied
+    assert response["result"]["via"] == "http://localhost:8000"
