@@ -182,3 +182,31 @@ def test_end_to_end_dry_run(monkeypatch, capsys):
     assert response["status"] == "success"
     assert response["result"]["dry_run"] is True
     assert "would_execute" in response["result"]
+
+
+def test_timeout_fires_on_unix(monkeypatch, capsys):
+    """Test that timeout actually fires on Unix systems."""
+    import time
+    import platform
+
+    # Skip on Windows
+    if platform.system() == 'Windows':
+        pytest.skip("Unix-only test")
+
+    class TimeoutInput(ToolInput):
+        timeout: int = 1
+
+    @toolable(summary="Slow tool", input_model=TimeoutInput)
+    def slow_tool(input: TimeoutInput):
+        time.sleep(2)  # Sleep longer than timeout
+        return {"result": "should not reach"}
+
+    cli = AgentCLI(slow_tool)
+    monkeypatch.setattr(sys, "argv", ["slow_tool", '{"timeout": 1}'])
+    cli.run()
+
+    captured = capsys.readouterr()
+    response = json.loads(captured.out)
+
+    assert response["status"] == "error"
+    assert response["error"]["code"] == "TIMEOUT"
