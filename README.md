@@ -1,5 +1,11 @@
 # Toolable
 
+[![CI](https://github.com/AnthemFlynn/toolable/actions/workflows/ci.yml/badge.svg)](https://github.com/AnthemFlynn/toolable/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/badge/coverage-97%25-brightgreen)](https://github.com/AnthemFlynn/toolable)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![PyPI](https://img.shields.io/pypi/v/toolable.svg)](https://pypi.org/project/toolable/)
+
 Make any CLI executable a full-featured agent tool without requiring a server.
 
 **Toolable** is a Python library that provides decorators, base classes, and a CLI runner to turn your Python functions into agent-callable tools with automatic discovery, validation, execution, streaming, sessions, and LLM sampling callbacks.

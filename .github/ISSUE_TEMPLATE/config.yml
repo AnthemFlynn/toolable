@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Question or Discussion
+    url: https://github.com/AnthemFlynn/toolable/discussions
+    about: Ask questions or discuss ideas
+  - name: Documentation
+    url: https://github.com/AnthemFlynn/toolable/blob/main/README.md
+    about: Read the documentation
