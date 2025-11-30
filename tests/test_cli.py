@@ -158,3 +158,40 @@ def test_print_discover(capsys):
     assert len(data["tools"]) == 1
     assert data["tools"][0]["name"] == "my_tool"
     assert data["tools"][0]["summary"] == "Test tool"
+
+
+def test_missing_resource_uri(monkeypatch, capsys):
+    """Test --resource flag without URI argument."""
+    @resource(uri_pattern="/files/{id}", summary="Get file")
+    def get_file(id: str):
+        return {"id": id}
+
+    cli = AgentCLI("test")
+    cli.register_resource(get_file)
+
+    monkeypatch.setattr(sys, "argv", ["test", "--resource"])
+    cli.run()
+
+    # Currently returns silently - should this be an error?
+    # For now, just test current behavior
+    captured = capsys.readouterr()
+    # No output expected with current implementation
+    assert captured.out == ""
+
+
+def test_missing_prompt_arguments(monkeypatch, capsys):
+    """Test --prompt flag without name or args."""
+    @prompt(summary="Test", arguments={"name": "Name"})
+    def my_prompt(name: str):
+        return f"Hello {name}"
+
+    cli = AgentCLI("test")
+    cli.register_prompt(my_prompt)
+
+    # Missing both name and args
+    monkeypatch.setattr(sys, "argv", ["test", "--prompt"])
+    cli.run()
+
+    captured = capsys.readouterr()
+    # Currently returns silently
+    assert captured.out == ""
