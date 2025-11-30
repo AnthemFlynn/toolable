@@ -1,5 +1,6 @@
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 
@@ -20,8 +21,10 @@ class ToolRegistry:
             return
 
         try:
+            # Use python to run .py files for cross-platform compatibility
+            cmd = [sys.executable, str(path)] if path.suffix == ".py" else [str(path)]
             result = subprocess.run(
-                [str(path), "--discover"],
+                cmd + ["--discover"],
                 capture_output=True,
                 text=True,
                 timeout=5,
@@ -58,8 +61,9 @@ class ToolRegistry:
             raise KeyError(f"Unknown tool: {name}")
 
         path = tool["_path"]
+        cmd = [sys.executable, str(path)] if path.suffix == ".py" else [str(path)]
         result = subprocess.run(
-            [str(path), name, "--manifest"],
+            cmd + [name, "--manifest"],
             capture_output=True,
             text=True,
         )
@@ -73,8 +77,9 @@ class ToolRegistry:
             return {"status": "error", "error": {"code": "NOT_FOUND", "message": f"Unknown tool: {name}", "recoverable": True}}
 
         path = tool["_path"]
+        cmd = [sys.executable, str(path)] if path.suffix == ".py" else [str(path)]
         result = subprocess.run(
-            [str(path), name, json.dumps(params)],
+            cmd + [name, json.dumps(params)],
             capture_output=True,
             text=True,
         )
@@ -108,8 +113,9 @@ class ToolRegistry:
             # Use fullmatch to require exact match
             if re.fullmatch(regex_pattern, uri):
                 path = info["_path"]
+                cmd = [sys.executable, str(path)] if path.suffix == ".py" else [str(path)]
                 result = subprocess.run(
-                    [str(path), "--resource", uri],
+                    cmd + ["--resource", uri],
                     capture_output=True,
                     text=True,
                 )
@@ -124,8 +130,9 @@ class ToolRegistry:
             return {"status": "error", "error": {"code": "NOT_FOUND", "message": f"Unknown prompt: {name}", "recoverable": True}}
 
         path = prompt["_path"]
+        cmd = [sys.executable, str(path)] if path.suffix == ".py" else [str(path)]
         result = subprocess.run(
-            [str(path), "--prompt", name, json.dumps(args)],
+            cmd + ["--prompt", name, json.dumps(args)],
             capture_output=True,
             text=True,
         )
