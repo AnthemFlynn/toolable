@@ -46,7 +46,11 @@ class ToolError(Exception):
         super().__init__(message)
 
     def to_response(self) -> dict:
-        """Convert to response envelope."""
+        """Convert to response envelope.
+
+        Note: Import is inside method to avoid circular dependency with response module.
+        This is a common Python pattern for breaking import cycles.
+        """
         from toolable.response import Response
         return Response.error(
             code=self.code.value,

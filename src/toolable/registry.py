@@ -43,8 +43,10 @@ class ToolRegistry:
                     prompt["_path"] = path
                     self.prompts[prompt["name"]] = prompt
 
-        except (subprocess.TimeoutExpired, json.JSONDecodeError, OSError):
-            pass
+        except (subprocess.TimeoutExpired, json.JSONDecodeError, OSError) as e:
+            # Log error but continue loading other tools
+            import warnings
+            warnings.warn(f"Failed to load tool from {path}: {e}")
 
     def discover(self) -> dict[str, str]:
         """Return tool summaries for LLM context injection."""

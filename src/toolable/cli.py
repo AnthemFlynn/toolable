@@ -3,6 +3,8 @@ import os
 import json
 import signal
 import inspect
+import platform
+import threading
 from typing import Callable, Any
 from pydantic import ValidationError
 
@@ -14,11 +16,33 @@ from toolable.discovery import (
     extract_schema_from_function,
 )
 from toolable.response import Response
-from toolable.errors import ToolError
+from toolable.errors import ToolError, ErrorCode
 from toolable.input import ToolInput
 from toolable.streaming import run_streaming_tool
 from toolable.session import run_session_tool
 from toolable.sampling import configure_sampling
+
+
+def _setup_timeout(timeout_seconds: int):
+    """Setup timeout handling (cross-platform)."""
+    if platform.system() == 'Windows':
+        # On Windows, use threading.Timer
+        def timeout_handler():
+            print(json.dumps(Response.error("TIMEOUT", "Operation timed out", recoverable=False)), file=sys.stderr)
+            os._exit(1)
+
+        timer = threading.Timer(timeout_seconds, timeout_handler)
+        timer.daemon = True
+        timer.start()
+        return timer
+    else:
+        # On Unix, use signal.alarm
+        def timeout_handler(signum, frame):
+            raise ToolError(ErrorCode.TIMEOUT, "Operation timed out")
+
+        signal.signal(signal.SIGALRM, timeout_handler)
+        signal.alarm(timeout_seconds)
+        return None
 
 
 class AgentCLI:
@@ -173,6 +197,7 @@ class AgentCLI:
 
         # Handle reserved fields
         input_obj = params if isinstance(params, ToolInput) else None
+        timeout_timer = None
 
         if input_obj:
             # Run pre_validate hook
@@ -184,11 +209,29 @@ class AgentCLI:
 
             # Handle working_dir
             if hasattr(input_obj, "working_dir") and input_obj.working_dir:
+                if not os.path.isdir(input_obj.working_dir):
+                    raise ToolError(
+                        ErrorCode.INVALID_PATH,
+                        f"Directory not found: {input_obj.working_dir}",
+                        recoverable=True
+                    )
                 os.chdir(input_obj.working_dir)
 
             # Handle timeout
             if hasattr(input_obj, "timeout") and input_obj.timeout:
-                signal.alarm(input_obj.timeout)
+                if input_obj.timeout <= 0:
+                    raise ToolError(
+                        ErrorCode.INVALID_INPUT,
+                        "timeout must be positive",
+                        recoverable=True
+                    )
+                if input_obj.timeout > 600:  # 10 minutes max
+                    raise ToolError(
+                        ErrorCode.INVALID_INPUT,
+                        "timeout exceeds maximum (600 seconds)",
+                        recoverable=True
+                    )
+                timeout_timer = _setup_timeout(input_obj.timeout)
 
             # Handle dry_run
             if hasattr(input_obj, "dry_run") and input_obj.dry_run:
@@ -202,11 +245,10 @@ class AgentCLI:
         try:
             if meta.get("input_model"):
                 result = fn(params)
+            elif isinstance(params, dict):
+                result = fn(**params)
             else:
-                if isinstance(params, dict):
-                    result = fn(**params)
-                else:
-                    result = fn(params)
+                result = fn(params)
 
             # Handle different return types
             if meta.get("streaming") and streaming:
@@ -231,6 +273,13 @@ class AgentCLI:
                 str(e),
                 recoverable=False
             )))
+        finally:
+            # Cleanup timeout timer on Windows
+            if timeout_timer and platform.system() == 'Windows':
+                timeout_timer.cancel()
+            # Cancel alarm on Unix
+            elif platform.system() != 'Windows':
+                signal.alarm(0)
 
     def _parse_input(self, fn: Callable, meta: dict, args: list[str], json_input: str | None) -> Any:
         """Parse input from JSON or CLI flags."""
