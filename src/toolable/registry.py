@@ -45,7 +45,7 @@ class ToolRegistry:
         except (subprocess.TimeoutExpired, json.JSONDecodeError, OSError) as e:
             # Log error but continue loading other tools
             import warnings
-            warnings.warn(f"Failed to load tool from {path}: {e}")
+            warnings.warn(f"Failed to load tool from {path}: {e}", stacklevel=2)
 
     def discover(self) -> dict[str, str]:
         """Return tool summaries for LLM context injection."""
@@ -98,7 +98,7 @@ class ToolRegistry:
         for pattern, info in self.resources.items():
             # Convert pattern to regex with proper escaping
             # First, find all {placeholder} patterns
-            placeholders = re.findall(r"\{(\w+)\}", pattern)
+            re.findall(r"\{(\w+)\}", pattern)
             # Replace placeholders with temporary markers
             temp_pattern = re.sub(r"\{(\w+)\}", "\x00\\1\x00", pattern)
             # Escape all literal regex characters

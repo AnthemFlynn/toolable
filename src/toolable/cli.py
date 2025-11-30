@@ -377,7 +377,7 @@ class AgentCLI:
                 "session_mode": meta.get("session_mode", False),
             })
 
-        for pattern, fn in self._resources.items():
+        for _pattern, fn in self._resources.items():
             meta = get_resource_meta(fn) or {}
             output["resources"].append(generate_resource_manifest(fn, meta))
 
@@ -418,7 +418,7 @@ class AgentCLI:
         for pattern, fn in self._resources.items():
             # Convert pattern to regex with proper escaping
             # First, find all {placeholder} patterns
-            placeholders = re.findall(r"\{(\w+)\}", pattern)
+            re.findall(r"\{(\w+)\}", pattern)
             # Replace placeholders with temporary markers
             temp_pattern = re.sub(r"\{(\w+)\}", "\x00\\1\x00", pattern)
             # Escape all literal regex characters
