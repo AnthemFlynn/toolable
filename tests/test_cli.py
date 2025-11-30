@@ -456,3 +456,30 @@ def test_single_tool_mode_fallback(monkeypatch, capsys):
 
     assert response["status"] == "success"
     assert response["result"]["value"] == "test"
+
+
+# Task 21: Tool-Specific Help Test
+def test_tool_help_output(monkeypatch, capsys):
+    """Test tool-specific --help output."""
+    class MyInput(ToolInput):
+        name: str = Field(description="User name")
+        age: int = Field(default=18, description="User age")
+
+    @toolable(summary="Create user", input_model=MyInput)
+    def create_user(input: MyInput):
+        """Create a new user in the system."""
+        return {}
+
+    cli = AgentCLI(create_user)
+    monkeypatch.setattr(sys, "argv", ["create_user", "--help"])
+    cli.run()
+
+    captured = capsys.readouterr()
+
+    # Verify help contains key elements
+    assert "create_user" in captured.out
+    assert "Create user" in captured.out
+    assert "Usage:" in captured.out
+    assert "Commands:" in captured.out
+    # Verify the summary is shown
+    assert "Create user" in captured.out
