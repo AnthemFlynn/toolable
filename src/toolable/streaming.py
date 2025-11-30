@@ -1,6 +1,6 @@
-import sys
 import json
-from typing import Generator, Any
+from collections.abc import Generator
+from typing import Any
 
 # Type alias for streaming tools
 stream = Generator[dict[str, Any], None, None]

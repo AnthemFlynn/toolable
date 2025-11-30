@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Slow tool that times out during discovery."""
-import time
 import sys
+import time
 
 if "--discover" in sys.argv:
     time.sleep(10)  # Longer than 5 second timeout

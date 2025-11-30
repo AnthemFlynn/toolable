@@ -1,7 +1,8 @@
 import pytest
 from pydantic import Field, ValidationError
-from toolable.input import ToolInput
+
 from toolable.errors import ToolError
+from toolable.input import ToolInput
 
 
 def test_tool_input_basic():

@@ -1,7 +1,7 @@
-import pytest
 import re
+
 from toolable.cli import AgentCLI
-from toolable.decorators import toolable, resource
+from toolable.decorators import resource, toolable
 
 
 def test_resource_uri_escaping():
@@ -100,8 +100,8 @@ def test_session_mode_required_flag(monkeypatch, capsys):
 
 def test_resource_uri_with_dots(monkeypatch, capsys):
     """Test URI pattern with literal dots are escaped."""
-    import sys
     import json
+    import sys
 
     @resource(uri_pattern="/files/{id}.json", summary="JSON file")
     def get_json(id: str):
@@ -128,8 +128,8 @@ def test_resource_uri_with_dots(monkeypatch, capsys):
 
 def test_resource_uri_with_multiple_placeholders(monkeypatch, capsys):
     """Test URI with multiple placeholders."""
-    import sys
     import json
+    import sys
 
     @resource(uri_pattern="/users/{user_id}/files/{file_id}", summary="User file")
     def get_user_file(user_id: str, file_id: str):
@@ -150,8 +150,8 @@ def test_resource_uri_with_multiple_placeholders(monkeypatch, capsys):
 
 def test_resource_uri_regex_chars_escaped(monkeypatch, capsys):
     """Test URI pattern with special regex characters."""
-    import sys
     import json
+    import sys
 
     @resource(uri_pattern="/files/{id}[backup]", summary="Backup file")
     def get_backup(id: str):

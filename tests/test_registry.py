@@ -1,8 +1,8 @@
-import pytest
-import json
-import subprocess
 import warnings
 from pathlib import Path
+
+import pytest
+
 from toolable.registry import ToolRegistry
 
 
@@ -166,7 +166,7 @@ def test_registry_render_prompt():
     result = registry.render_prompt("greet", {"name": "Alice"})
 
     # Should return the rendered prompt
-    assert isinstance(result, (dict, str))
+    assert isinstance(result, dict | str)
 
 
 def test_registry_render_prompt_not_found():

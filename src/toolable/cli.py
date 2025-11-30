@@ -1,26 +1,27 @@
-import sys
-import os
 import json
-import signal
-import inspect
+import os
 import platform
+import signal
+import sys
 import threading
-from typing import Callable, Any
+from collections.abc import Callable
+from typing import Any
+
 from pydantic import ValidationError
 
-from toolable.decorators import get_tool_meta, get_resource_meta, get_prompt_meta
+from toolable.decorators import get_prompt_meta, get_resource_meta, get_tool_meta
 from toolable.discovery import (
-    generate_tool_manifest,
-    generate_resource_manifest,
-    generate_prompt_manifest,
     extract_schema_from_function,
+    generate_prompt_manifest,
+    generate_resource_manifest,
+    generate_tool_manifest,
 )
-from toolable.response import Response
-from toolable.errors import ToolError, ErrorCode
+from toolable.errors import ErrorCode, ToolError
 from toolable.input import ToolInput
-from toolable.streaming import run_streaming_tool
-from toolable.session import run_session_tool
+from toolable.response import Response
 from toolable.sampling import configure_sampling
+from toolable.session import run_session_tool
+from toolable.streaming import run_streaming_tool
 
 
 def _setup_timeout(timeout_seconds: int):
@@ -376,11 +377,11 @@ class AgentCLI:
                 "session_mode": meta.get("session_mode", False),
             })
 
-        for pattern, fn in self._resources.items():
+        for _pattern, fn in self._resources.items():
             meta = get_resource_meta(fn) or {}
             output["resources"].append(generate_resource_manifest(fn, meta))
 
-        for name, fn in self._prompts.items():
+        for _name, fn in self._prompts.items():
             meta = get_prompt_meta(fn) or {}
             output["prompts"].append(generate_prompt_manifest(fn, meta))
 
@@ -417,7 +418,7 @@ class AgentCLI:
         for pattern, fn in self._resources.items():
             # Convert pattern to regex with proper escaping
             # First, find all {placeholder} patterns
-            placeholders = re.findall(r"\{(\w+)\}", pattern)
+            re.findall(r"\{(\w+)\}", pattern)
             # Replace placeholders with temporary markers
             temp_pattern = re.sub(r"\{(\w+)\}", "\x00\\1\x00", pattern)
             # Escape all literal regex characters

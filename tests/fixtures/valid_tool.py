@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Valid test tool for registry tests."""
-import sys
 import json
+import sys
 
 if "--discover" in sys.argv:
     print(json.dumps({

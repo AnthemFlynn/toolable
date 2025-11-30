@@ -1,6 +1,7 @@
 import inspect
-from typing import Any, Callable, get_type_hints
-from pydantic import Field
+from collections.abc import Callable
+from typing import get_type_hints
+
 from pydantic.fields import FieldInfo
 
 

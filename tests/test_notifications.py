@@ -1,7 +1,5 @@
-import pytest
 import json
-import sys
-from io import StringIO
+
 from toolable.notifications import notify
 
 

@@ -1,8 +1,10 @@
-import pytest
-import sys
 import json
+import sys
 from io import StringIO
-from toolable.sampling import configure_sampling, _sample_config, sample
+
+import pytest
+
+from toolable.sampling import _sample_config, configure_sampling, sample
 
 
 def test_configure_sampling_stdin():
@@ -41,7 +43,6 @@ def test_sample_stdin_request_format(monkeypatch):
 
     # Capture print calls to verify request format
     printed_requests = []
-    original_print = print
     def mock_print(*args, **kwargs):
         if args:
             printed_requests.append(args[0])
