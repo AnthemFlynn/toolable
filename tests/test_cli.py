@@ -356,3 +356,103 @@ def test_render_prompt_not_found(monkeypatch, capsys):
 
     assert data["status"] == "error"
     assert data["error"]["code"] == "NOT_FOUND"
+
+
+# Task 17: Duplicate Flags Test
+def test_duplicate_flags_last_wins(monkeypatch, capsys):
+    """Test that duplicate flags - last value wins."""
+    @toolable(summary="Echo")
+    def echo(message: str):
+        return {"message": message}
+
+    cli = AgentCLI(echo)
+    monkeypatch.setattr(sys, "argv", ["echo", "--message", "first", "--message", "second"])
+    cli.run()
+
+    captured = capsys.readouterr()
+    response = json.loads(captured.out)
+
+    # Document current behavior (last wins)
+    assert response["result"]["message"] == "second"
+
+
+# Task 18: Type Coercion Tests
+def test_flag_json_array_parsing(monkeypatch, capsys):
+    """Test that JSON arrays in flag values are parsed."""
+    @toolable(summary="Process")
+    def process(items: list):
+        return {"count": len(items)}
+
+    cli = AgentCLI(process)
+    monkeypatch.setattr(sys, "argv", ["process", "--items", '["a", "b", "c"]'])
+    cli.run()
+
+    captured = capsys.readouterr()
+    response = json.loads(captured.out)
+
+    assert response["result"]["count"] == 3
+
+
+def test_flag_invalid_json_treated_as_string(monkeypatch, capsys):
+    """Test that invalid JSON in flags is treated as string."""
+    @toolable(summary="Echo")
+    def echo(message: str):
+        return {"message": message}
+
+    cli = AgentCLI(echo)
+    # Use a string value that doesn't start with { to test fallback to string
+    monkeypatch.setattr(sys, "argv", ["echo", "--message", "[invalid"])
+    cli.run()
+
+    captured = capsys.readouterr()
+    response = json.loads(captured.out)
+
+    # Invalid JSON becomes string literal
+    assert response["result"]["message"] == "[invalid"
+
+
+# Task 13: Validate Flag Test
+def test_validate_flag_with_pre_validate_error(monkeypatch, capsys):
+    """Test --validate catches pre_validate errors."""
+    from toolable.errors import ToolError, ErrorCode
+
+    class MyInput(ToolInput):
+        email: str
+
+        def pre_validate(self):
+            if "@" not in self.email:
+                raise ToolError(ErrorCode.INVALID_INPUT, "Invalid email format")
+
+    @toolable(summary="Test", input_model=MyInput)
+    def my_tool(input: MyInput):
+        return {}
+
+    cli = AgentCLI(my_tool)
+    monkeypatch.setattr(sys, "argv", ["my_tool", "--validate", '{"email": "invalid"}'])
+    cli.run()
+
+    captured = capsys.readouterr()
+    data = json.loads(captured.out)
+
+    assert data["valid"] is False
+    assert "errors" in data
+
+
+# Task 14: Single-Tool Mode Fallback Test
+def test_single_tool_mode_fallback(monkeypatch, capsys):
+    """Test single-tool mode when command doesn't match tool name."""
+    @toolable(summary="Only tool")
+    def only_tool(value: str):
+        return {"value": value}
+
+    cli = AgentCLI("mycli", tools=[only_tool])
+
+    # Args don't start with "only_tool" but there's only one tool
+    monkeypatch.setattr(sys, "argv", ["mycli", '{"value": "test"}'])
+    cli.run()
+
+    captured = capsys.readouterr()
+    response = json.loads(captured.out)
+
+    assert response["status"] == "success"
+    assert response["result"]["value"] == "test"
