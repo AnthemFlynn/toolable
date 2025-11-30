@@ -483,3 +483,292 @@ def test_tool_help_output(monkeypatch, capsys):
     assert "Commands:" in captured.out
     # Verify the summary is shown
     assert "Create user" in captured.out
+
+
+def test_register_non_resource_function(capsys):
+    """Test registering a function without @resource decorator raises ValueError."""
+    def not_a_resource():
+        return {}
+
+    cli = AgentCLI("test")
+
+    with pytest.raises(ValueError, match="is not decorated with @resource"):
+        cli.register_resource(not_a_resource)
+
+
+def test_tool_args_when_command_matches(monkeypatch, capsys):
+    """Test tool_args is set correctly when command matches tool name."""
+    @toolable(summary="Test")
+    def my_tool(value: str):
+        return {"value": value}
+
+    cli = AgentCLI("test", tools=[my_tool])
+    monkeypatch.setattr(sys, "argv", ["test", "my_tool", "--value", "hello"])
+    cli.run()
+
+    captured = capsys.readouterr()
+    response = json.loads(captured.out)
+
+    assert response["status"] == "success"
+    assert response["result"]["value"] == "hello"
+
+
+def test_json_decode_error_in_tool_execution(monkeypatch, capsys):
+    """Test JSON decode error handling in tool execution."""
+    @toolable(summary="Test")
+    def my_tool(value: str):
+        return {"value": value}
+
+    cli = AgentCLI("test", tools=[my_tool])
+    # Pass invalid JSON
+    monkeypatch.setattr(sys, "argv", ["test", "my_tool", "{invalid json}"])
+    cli.run()
+
+    captured = capsys.readouterr()
+    response = json.loads(captured.out)
+
+    assert response["status"] == "error"
+    assert response["error"]["code"] == "INVALID_INPUT"
+    assert "Invalid JSON" in response["error"]["message"]
+
+
+def test_pre_validate_error_handling(monkeypatch, capsys):
+    """Test pre_validate error is caught and returned."""
+    from toolable.errors import ToolError, ErrorCode
+
+    class MyInput(ToolInput):
+        value: str
+
+        def pre_validate(self):
+            if self.value == "bad":
+                raise ToolError(ErrorCode.INVALID_INPUT, "Bad value")
+
+    @toolable(summary="Test", input_model=MyInput)
+    def my_tool(input: MyInput):
+        return {}
+
+    cli = AgentCLI("test", tools=[my_tool])
+    monkeypatch.setattr(sys, "argv", ["test", "my_tool", '{"value": "bad"}'])
+    cli.run()
+
+    captured = capsys.readouterr()
+    response = json.loads(captured.out)
+
+    assert response["status"] == "error"
+    assert response["error"]["code"] == "INVALID_INPUT"
+    assert "Bad value" in response["error"]["message"]
+
+
+def test_working_dir_changes_directory(monkeypatch, capsys, tmp_path):
+    """Test working_dir changes current directory."""
+    import os
+
+    class MyInput(ToolInput):
+        working_dir: str | None = None
+
+    @toolable(summary="Test", input_model=MyInput)
+    def my_tool(input: MyInput):
+        return {"cwd": os.getcwd()}
+
+    cli = AgentCLI("test", tools=[my_tool])
+    monkeypatch.setattr(sys, "argv", ["test", "my_tool", json.dumps({"working_dir": str(tmp_path)})])
+    cli.run()
+
+    captured = capsys.readouterr()
+    response = json.loads(captured.out)
+
+    assert response["status"] == "success"
+    assert tmp_path.name in response["result"]["cwd"]
+
+
+def test_response_already_has_status(monkeypatch, capsys):
+    """Test that response with status key is not wrapped."""
+    @toolable(summary="Test")
+    def my_tool():
+        return {"status": "custom", "data": "value"}
+
+    cli = AgentCLI("test", tools=[my_tool])
+    monkeypatch.setattr(sys, "argv", ["test", "my_tool"])
+    cli.run()
+
+    captured = capsys.readouterr()
+    response = json.loads(captured.out)
+
+    # Should be returned as-is without wrapping
+    assert response["status"] == "custom"
+    assert response["data"] == "value"
+
+
+def test_parse_input_with_input_model_from_flags(monkeypatch, capsys):
+    """Test parsing CLI flags into input model."""
+    class MyInput(ToolInput):
+        name: str
+        count: int
+
+    @toolable(summary="Test", input_model=MyInput)
+    def my_tool(input: MyInput):
+        return {"name": input.name, "count": input.count}
+
+    cli = AgentCLI("test", tools=[my_tool])
+    monkeypatch.setattr(sys, "argv", ["test", "my_tool", "--name", "test", "--count", "5"])
+    cli.run()
+
+    captured = capsys.readouterr()
+    response = json.loads(captured.out)
+
+    assert response["status"] == "success"
+    assert response["result"]["name"] == "test"
+    assert response["result"]["count"] == 5
+
+
+def test_discover_with_resources_and_prompts(monkeypatch, capsys):
+    """Test _print_discover includes resources and prompts."""
+    @toolable(summary="Tool")
+    def my_tool():
+        return {}
+
+    @resource(uri_pattern="/files/{id}", summary="Get file")
+    def get_file(id: str):
+        return {"id": id}
+
+    @prompt(summary="Greet", arguments={"name": "Name"})
+    def greet(name: str):
+        return f"Hello {name}"
+
+    cli = AgentCLI("test", tools=[my_tool])
+    cli.register_resource(get_file)
+    cli.register_prompt(greet)
+
+    monkeypatch.setattr(sys, "argv", ["test", "--discover"])
+    cli.run()
+
+    captured = capsys.readouterr()
+    data = json.loads(captured.out)
+
+    assert len(data["tools"]) == 1
+    assert len(data["resources"]) == 1
+    assert len(data["prompts"]) == 1
+    assert data["resources"][0]["uri_pattern"] == "/files/{id}"
+    assert data["prompts"][0]["name"] == "greet"
+
+
+def test_fetch_resource_with_exception(monkeypatch, capsys):
+    """Test resource fetch handles exceptions."""
+    @resource(uri_pattern="/files/{id}", summary="Get file")
+    def get_file(id: str):
+        raise RuntimeError("Database error")
+
+    cli = AgentCLI("test")
+    cli.register_resource(get_file)
+
+    monkeypatch.setattr(sys, "argv", ["test", "--resource", "/files/123"])
+    cli.run()
+
+    captured = capsys.readouterr()
+    response = json.loads(captured.out)
+
+    assert response["status"] == "error"
+    assert response["error"]["code"] == "INTERNAL"
+    assert "Database error" in response["error"]["message"]
+
+
+def test_render_prompt_with_exception(monkeypatch, capsys):
+    """Test prompt render handles exceptions."""
+    @prompt(summary="Test", arguments={"x": "Value"})
+    def my_prompt(x: str):
+        raise ValueError("Invalid template")
+
+    cli = AgentCLI("test")
+    cli.register_prompt(my_prompt)
+
+    monkeypatch.setattr(sys, "argv", ["test", "--prompt", "my_prompt", '{"x": "value"}'])
+    cli.run()
+
+    captured = capsys.readouterr()
+    response = json.loads(captured.out)
+
+    assert response["status"] == "error"
+    assert response["error"]["code"] == "INTERNAL"
+    assert "Invalid template" in response["error"]["message"]
+
+
+def test_validate_input_generic_exception(monkeypatch, capsys):
+    """Test _validate_input handles generic exceptions."""
+    @toolable(summary="Test")
+    def my_tool(value: str):
+        return {}
+
+    cli = AgentCLI("test", tools=[my_tool])
+    # Pass malformed JSON to trigger generic exception
+    monkeypatch.setattr(sys, "argv", ["test", "my_tool", "--validate", "not json at all"])
+    cli.run()
+
+    captured = capsys.readouterr()
+    result = json.loads(captured.out)
+
+    assert result["valid"] is False
+    assert "errors" in result
+
+
+def test_print_tool_help_with_docstring(monkeypatch, capsys):
+    """Test _print_tool_help displays function docstring and parameters."""
+    class MyInput(ToolInput):
+        name: str = Field(description="User name")
+        count: int = Field(default=10, description="Number of items")
+
+    @toolable(summary="Process data", input_model=MyInput)
+    def process_data(input: MyInput):
+        """Process data with the given parameters.
+
+        This is a detailed description of what the function does.
+        """
+        return {}
+
+    cli = AgentCLI("test", tools=[process_data])
+    monkeypatch.setattr(sys, "argv", ["test", "process_data", "--help"])
+    cli.run()
+
+    captured = capsys.readouterr()
+
+    # Check that help output contains expected elements
+    assert "process_data" in captured.out
+    assert "Process data" in captured.out
+    assert "Process data with the given parameters" in captured.out
+    assert "Parameters:" in captured.out
+    assert "--name" in captured.out
+    assert "--count" in captured.out
+    assert "default: 10" in captured.out
+
+
+def test_tool_returns_non_dict_non_response(monkeypatch, capsys):
+    """Test tool returning a non-dict value (like a string or int)."""
+    @toolable(summary="Return string")
+    def my_tool():
+        return "plain string result"
+
+    cli = AgentCLI("test", tools=[my_tool])
+    monkeypatch.setattr(sys, "argv", ["test", "my_tool"])
+    cli.run()
+
+    captured = capsys.readouterr()
+    response = json.loads(captured.out)
+
+    assert response["status"] == "success"
+    assert response["result"]["result"] == "plain string result"
+
+
+def test_parse_input_flag_without_value_at_end(monkeypatch, capsys):
+    """Test parsing flag at end of arguments without a value."""
+    @toolable(summary="Test")
+    def my_tool(verbose: bool = False):
+        return {"verbose": verbose}
+
+    cli = AgentCLI("test", tools=[my_tool])
+    monkeypatch.setattr(sys, "argv", ["test", "my_tool", "--verbose"])
+    cli.run()
+
+    captured = capsys.readouterr()
+    response = json.loads(captured.out)
+
+    assert response["status"] == "success"
+    assert response["result"]["verbose"] is True
