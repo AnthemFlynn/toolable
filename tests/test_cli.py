@@ -284,3 +284,75 @@ def test_prompts_flag(monkeypatch, capsys):
 
     assert "prompts" in data
     assert len(data["prompts"]) == 1
+
+
+# Task 11: Resource Fetching End-to-End Tests
+def test_fetch_resource_success(monkeypatch, capsys):
+    """Test successful resource fetch."""
+    @resource(uri_pattern="/files/{file_id}", summary="Get file")
+    def get_file(file_id: str):
+        return {"id": file_id, "content": f"Content of {file_id}"}
+
+    cli = AgentCLI("test")
+    cli.register_resource(get_file)
+
+    monkeypatch.setattr(sys, "argv", ["test", "--resource", "/files/123"])
+    cli.run()
+
+    captured = capsys.readouterr()
+    data = json.loads(captured.out)
+
+    assert data["id"] == "123"
+    assert "Content of 123" in data["content"]
+
+
+def test_fetch_resource_not_found(monkeypatch, capsys):
+    """Test resource fetch with no matching pattern."""
+    @resource(uri_pattern="/files/{id}", summary="Get file")
+    def get_file(id: str):
+        return {"id": id}
+
+    cli = AgentCLI("test")
+    cli.register_resource(get_file)
+
+    monkeypatch.setattr(sys, "argv", ["test", "--resource", "/users/123"])
+    cli.run()
+
+    captured = capsys.readouterr()
+    data = json.loads(captured.out)
+
+    assert data["status"] == "error"
+    assert data["error"]["code"] == "NOT_FOUND"
+
+
+# Task 12: Prompt Rendering Tests
+def test_render_prompt_success(monkeypatch, capsys):
+    """Test successful prompt rendering."""
+    @prompt(summary="Greeting", arguments={"name": "Name"})
+    def greet(name: str):
+        return f"Hello {name}!"
+
+    cli = AgentCLI("test")
+    cli.register_prompt(greet)
+
+    monkeypatch.setattr(sys, "argv", ["test", "--prompt", "greet", '{"name": "Alice"}'])
+    cli.run()
+
+    captured = capsys.readouterr()
+    data = json.loads(captured.out)
+
+    assert data == "Hello Alice!"
+
+
+def test_render_prompt_not_found(monkeypatch, capsys):
+    """Test rendering unknown prompt."""
+    cli = AgentCLI("test")
+
+    monkeypatch.setattr(sys, "argv", ["test", "--prompt", "unknown", "{}"])
+    cli.run()
+
+    captured = capsys.readouterr()
+    data = json.loads(captured.out)
+
+    assert data["status"] == "error"
+    assert data["error"]["code"] == "NOT_FOUND"

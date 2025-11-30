@@ -283,3 +283,60 @@ def test_timeout_exceeds_maximum(monkeypatch, capsys):
     assert response["status"] == "error"
     assert response["error"]["code"] == "INVALID_INPUT"
     assert "600" in response["error"]["message"]
+
+
+def test_working_dir_not_found(monkeypatch, capsys):
+    """Test that invalid working_dir is rejected."""
+    class MyInput(ToolInput):
+        working_dir: str
+
+    @toolable(summary="Test", input_model=MyInput)
+    def my_tool(input: MyInput):
+        return {"result": "ok"}
+
+    cli = AgentCLI(my_tool)
+    monkeypatch.setattr(sys, "argv", ["my_tool", '{"working_dir": "/nonexistent/path/12345"}'])
+    cli.run()
+
+    captured = capsys.readouterr()
+    response = json.loads(captured.out)
+
+    assert response["status"] == "error"
+    assert response["error"]["code"] == "INVALID_PATH"
+    assert "not found" in response["error"]["message"].lower()
+
+
+def test_tool_returns_none(monkeypatch, capsys):
+    """Test tool that returns None instead of dict."""
+    @toolable(summary="Broken tool")
+    def broken_tool():
+        return None
+
+    cli = AgentCLI(broken_tool)
+    monkeypatch.setattr(sys, "argv", ["broken_tool", "{}"])
+    cli.run()
+
+    captured = capsys.readouterr()
+    response = json.loads(captured.out)
+
+    # Should wrap None in result envelope
+    assert response["status"] == "success"
+    assert response["result"]["result"] is None
+
+
+def test_tool_returns_non_serializable(monkeypatch, capsys):
+    """Test tool that returns non-JSON-serializable object."""
+    @toolable(summary="Returns object")
+    def object_tool():
+        return {"data": object()}  # object() isn't JSON-serializable
+
+    cli = AgentCLI(object_tool)
+    monkeypatch.setattr(sys, "argv", ["object_tool", "{}"])
+    cli.run()
+
+    captured = capsys.readouterr()
+    response = json.loads(captured.out)
+
+    # Should catch JSON serialization error
+    assert response["status"] == "error"
+    assert response["error"]["code"] == "INTERNAL"
