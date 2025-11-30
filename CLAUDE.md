@@ -10,39 +10,84 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Setup
 ```bash
-# Install in development mode
-pip install -e .
-
-# Install with dev dependencies (once pyproject.toml is updated)
+# Install in development mode with dev dependencies
 pip install -e ".[dev]"
+
+# Install pre-commit hooks (recommended)
+pre-commit install
 ```
 
 ### Testing
 ```bash
-# Run all tests
+# Run all tests (153 tests, 97% coverage)
 pytest
 
 # Run specific test file
 pytest tests/test_decorators.py
 
-# Run with coverage
+# Run with coverage report
 pytest --cov=toolable --cov-report=term-missing
 
 # Run single test
 pytest tests/test_cli.py::test_specific_function -v
+
+# Run tests for specific module coverage
+pytest tests/test_cli.py --cov=toolable.cli --cov-report=term-missing
 ```
 
 ### Code Quality
 ```bash
+# Run pre-commit hooks manually
+pre-commit run --all-files
+
 # Run type checking
-mypy src/toolable
+mypy src/toolable --ignore-missing-imports
 
 # Run linting
-ruff check src/toolable
+ruff check src/toolable tests/
 
 # Auto-fix linting issues
-ruff check --fix src/toolable
+ruff check --fix src/toolable tests/
+
+# Format code
+ruff format src/toolable tests/
 ```
+
+## Project Status
+
+**Current State:**
+- **Version**: 0.1.0 (pre-release on dev branch)
+- **Test Coverage**: 97% (153 tests)
+- **Python Support**: 3.10, 3.11, 3.12, 3.13
+- **Platforms**: Linux, macOS, Windows
+- **License**: MIT
+
+**Key Metrics:**
+- 12 core modules (670 lines of code)
+- 8 modules at 100% coverage
+- All tests passing on macOS (CI configured for all platforms)
+
+**Infrastructure:**
+- CI/CD: `.github/workflows/ci.yml` (tests on all platforms/versions)
+- Publishing: `.github/workflows/publish.yml` (automated PyPI releases)
+- Pre-commit: `.pre-commit-config.yaml` (ruff, mypy, security checks)
+- Community: `CONTRIBUTING.md`, `SECURITY.md`, issue/PR templates
+
+## Important Files for AI Agents
+
+**Development:**
+- `CONTRIBUTING.md` - Full development workflow, not duplicated here
+- `docs/plans/` - Implementation plans and designs
+- `docs/test-coverage-report.md` - Detailed coverage analysis
+
+**Testing:**
+- `tests/fixtures/` - Mock tools for registry testing (valid_tool.py, broken_tool.py, etc.)
+- Coverage target: 90% minimum, currently at 97%
+
+**Configuration:**
+- `pyproject.toml` - Package metadata, dependencies, build config
+- `ruff.toml` - Linting rules
+- `.pre-commit-config.yaml` - Auto-formatting on commit
 
 ## Architecture
 
@@ -75,19 +120,29 @@ toolable/
 └── py.typed             # PEP 561 marker
 ```
 
-### Implementation Order
+### Module Dependencies
 
-Follow this dependency order when implementing:
+Understanding module relationships (for modifications):
 
-1. `errors.py` — foundation for all error handling
-2. `response.py` — response envelopes (no dependencies)
-3. `input.py` — base class for tool inputs (needs errors)
-4. `decorators.py` — metadata registration (needs input)
-5. `discovery.py` — schema extraction (needs decorators)
-6. Standalone modules: `notifications.py`, `streaming.py`, `session.py`, `sampling.py`
-7. `cli.py` — CLI runner (needs everything above)
-8. `registry.py` — external tool loading (needs response)
-9. `__init__.py` — public API exports
+**Foundation (no dependencies):**
+- `errors.py`, `response.py`, `notifications.py`, `streaming.py`, `session.py`, `sampling.py`
+
+**Core (depends on foundation):**
+- `input.py` → depends on `errors.py`
+- `decorators.py` → depends on `input.py`
+- `discovery.py` → depends on `decorators.py`
+
+**Integration (depends on core + foundation):**
+- `cli.py` → depends on all above modules
+- `registry.py` → depends on `response.py`
+
+**Public API:**
+- `__init__.py` → exports from all modules
+
+**When modifying:**
+- Changes to foundation modules may require updates throughout
+- Changes to `cli.py` are usually isolated
+- Always run full test suite after changes to foundation modules
 
 ### Key Architectural Patterns
 
@@ -109,10 +164,17 @@ Tools expose themselves through progressive detail:
 
 **Reserved Field Names in ToolInput**
 Subclasses can define these fields to activate special behavior:
-- `working_dir: str` → chdir before execution
-- `timeout: int` → kill after N seconds
+- `working_dir: str` → chdir before execution (validated to exist)
+- `timeout: int` → kill after N seconds (max 600, cross-platform via signal.alarm or threading.Timer)
 - `dry_run: bool` → validate only, don't execute
 - `verbose: bool` → extra detail in response
+
+**Timeout Handling (Cross-Platform)**
+- Unix/macOS: Uses `signal.alarm()` with SIGALRM handler that raises `ToolError`
+- Windows: Uses `threading.Timer` with daemon thread
+- Cleanup: `finally` block cancels timer (Windows) or clears alarm (Unix)
+- Validation: Must be positive and ≤ 600 seconds
+- See `cli.py:26-45` for implementation
 
 **Error Recoverability**
 All errors classified as recoverable or not, guiding agent retry behavior:
@@ -133,14 +195,31 @@ All errors classified as recoverable or not, guiding agent retry behavior:
 
 ### Testing Strategy
 
-Each module has comprehensive test coverage:
+**Current State: 97% coverage, 153 tests**
 
-- **Unit tests**: Test individual functions and classes in isolation
-- **Integration tests**: Test full CLI execution paths end-to-end
-- **Edge cases**: Validation errors, timeouts, partial failures
-- **Streaming/Session**: Bidirectional protocol correctness
+Test organization:
+- **Unit tests**: Individual functions/classes (`test_errors.py`, `test_response.py`, etc.)
+- **Integration tests**: Full CLI execution (`test_integration.py` - 16 tests)
+- **Security tests**: URI matching, input validation (`test_security_fixes.py` - 7 tests)
+- **Fixtures**: Mock tools in `tests/fixtures/` (valid_tool.py, broken_tool.py, slow_tool.py, etc.)
 
-Target: >90% code coverage
+**Coverage by module:**
+- 8 modules at 100%: decorators, errors, notifications, registry, response, session, streaming, + others
+- cli.py: 96% (platform-specific code untested)
+- All modules >84%
+
+**When adding new features:**
+- Write tests first (TDD)
+- Maintain 90%+ coverage
+- Test error paths, not just happy path
+- Add fixtures if testing external interactions
+- Run full suite: `pytest tests/ --cov=toolable`
+
+**Common test patterns:**
+- Use `monkeypatch` for sys.argv mocking
+- Use `capsys` for stdout/stderr capture
+- Create fixtures for reusable test tools
+- Test both success and error responses
 
 ## Important Implementation Notes
 
@@ -154,7 +233,13 @@ The `discovery.py` module extracts schemas from:
 ### Streaming vs Session Modes
 
 - **Streaming**: One-way event emission (progress, logs, artifacts, final result)
+  - Tools marked `streaming=True` MUST be called with `--stream` flag (enforced in cli.py:255-263)
+  - Use `StreamEvent` helpers for progress, logs, artifacts
+
 - **Session**: Bidirectional communication with `send()`/`yield` protocol
+  - Tools marked `session_mode=True` MUST be called with `--session` flag (enforced in cli.py:264-272)
+  - Generator send() semantics: input N is assigned on yield N+1 (important for testing!)
+  - Use `SessionEvent` helpers for start, awaiting, end
 
 ### External Tool Loading
 

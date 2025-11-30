@@ -432,32 +432,25 @@ from simpleeval import simple_eval
 result = simple_eval(user_input, names={"x": 10})
 ```
 
-## Development
+## Contributing
 
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for:
+- Development setup and workflow
+- Testing requirements (90%+ coverage)
+- Code style guidelines
+- Pull request process
+
+Quick start for contributors:
 ```bash
-# Install dev dependencies
-pip install -e ".[dev]"
-
-# Run tests
-pytest
-
-# Run tests with coverage
-pytest --cov=toolable --cov-report=term-missing
-
-# Type checking
-mypy src/toolable
-
-# Linting
-ruff check src/toolable
-
-# Auto-fix linting issues
-ruff check --fix src/toolable
+pip install -e ".[dev]"  # Install with dev dependencies
+pytest tests/            # Run tests (153 tests, 97% coverage)
+ruff check src/ tests/   # Check code style
 ```
+
+## Security
+
+Found a security issue? Please see our [Security Policy](SECURITY.md) for responsible disclosure.
 
 ## License
 
-MIT License - see LICENSE file for details.
-
-## Contributing
-
-Contributions welcome! Please open an issue or pull request.
+MIT License - see [LICENSE](LICENSE) file for details.
