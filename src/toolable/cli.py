@@ -381,7 +381,7 @@ class AgentCLI:
             meta = get_resource_meta(fn) or {}
             output["resources"].append(generate_resource_manifest(fn, meta))
 
-        for name, fn in self._prompts.items():
+        for _name, fn in self._prompts.items():
             meta = get_prompt_meta(fn) or {}
             output["prompts"].append(generate_prompt_manifest(fn, meta))
 
