@@ -195,3 +195,92 @@ def test_missing_prompt_arguments(monkeypatch, capsys):
     captured = capsys.readouterr()
     # Currently returns silently
     assert captured.out == ""
+
+
+def test_unknown_command_multi_tool(monkeypatch, capsys):
+    """Test unknown command with multiple tools registered."""
+    @toolable(summary="Tool A")
+    def tool_a():
+        return "a"
+
+    @toolable(summary="Tool B")
+    def tool_b():
+        return "b"
+
+    cli = AgentCLI("mycli", tools=[tool_a, tool_b])
+    monkeypatch.setattr(sys, "argv", ["mycli", "unknown_cmd", "{}"])
+    cli.run()
+
+    captured = capsys.readouterr()
+    response = json.loads(captured.out)
+
+    assert response["status"] == "error"
+    assert response["error"]["code"] == "NOT_FOUND"
+    assert "unknown_cmd" in response["error"]["message"]
+
+
+def test_help_flag_no_tools(monkeypatch, capsys):
+    """Test --help with no tools registered."""
+    cli = AgentCLI("emptycli")
+    monkeypatch.setattr(sys, "argv", ["emptycli", "--help"])
+    cli.run()
+
+    captured = capsys.readouterr()
+    assert "emptycli" in captured.out
+    assert "Commands:" in captured.out
+
+
+def test_tools_flag(monkeypatch, capsys):
+    """Test --tools flag."""
+    @toolable(summary="Test tool")
+    def my_tool():
+        return {}
+
+    cli = AgentCLI("test", tools=[my_tool])
+    monkeypatch.setattr(sys, "argv", ["test", "--tools"])
+    cli.run()
+
+    captured = capsys.readouterr()
+    data = json.loads(captured.out)
+
+    assert "tools" in data
+    assert len(data["tools"]) == 1
+    assert data["tools"][0]["name"] == "my_tool"
+
+
+def test_resources_flag(monkeypatch, capsys):
+    """Test --resources flag."""
+    @resource(uri_pattern="/test/{id}", summary="Test resource")
+    def get_resource(id: str):
+        return {"id": id}
+
+    cli = AgentCLI("test")
+    cli.register_resource(get_resource)
+
+    monkeypatch.setattr(sys, "argv", ["test", "--resources"])
+    cli.run()
+
+    captured = capsys.readouterr()
+    data = json.loads(captured.out)
+
+    assert "resources" in data
+    assert len(data["resources"]) == 1
+
+
+def test_prompts_flag(monkeypatch, capsys):
+    """Test --prompts flag."""
+    @prompt(summary="Test prompt", arguments={"x": "Value"})
+    def my_prompt(x: str):
+        return x
+
+    cli = AgentCLI("test")
+    cli.register_prompt(my_prompt)
+
+    monkeypatch.setattr(sys, "argv", ["test", "--prompts"])
+    cli.run()
+
+    captured = capsys.readouterr()
+    data = json.loads(captured.out)
+
+    assert "prompts" in data
+    assert len(data["prompts"]) == 1
