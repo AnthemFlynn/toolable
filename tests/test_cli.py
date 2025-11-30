@@ -1,0 +1,160 @@
+import pytest
+import json
+import sys
+from io import StringIO
+from pydantic import Field
+from toolable.cli import AgentCLI
+from toolable.decorators import toolable, resource, prompt
+from toolable.input import ToolInput
+
+
+def test_agent_cli_single_tool_shorthand():
+    """Test AgentCLI with single tool shorthand."""
+    @toolable(summary="Test tool")
+    def my_tool():
+        return {"message": "hello"}
+
+    cli = AgentCLI(my_tool)
+    assert cli.name == "my_tool"
+    assert "my_tool" in cli._tools
+
+
+def test_agent_cli_register_tool():
+    """Test registering tools."""
+    @toolable(summary="Tool A")
+    def tool_a():
+        return "a"
+
+    @toolable(summary="Tool B")
+    def tool_b():
+        return "b"
+
+    cli = AgentCLI("mycli", tools=[tool_a, tool_b])
+    assert "tool_a" in cli._tools
+    assert "tool_b" in cli._tools
+
+
+def test_agent_cli_register_resource():
+    """Test registering resources."""
+    @resource(uri_pattern="/files/{id}", summary="Get file")
+    def get_file(id: str):
+        return {"id": id}
+
+    cli = AgentCLI("mycli")
+    cli.register_resource(get_file)
+    assert "/files/{id}" in cli._resources
+
+
+def test_agent_cli_register_prompt():
+    """Test registering prompts."""
+    @prompt(summary="Greet", arguments={"name": "Name"})
+    def greet(name: str):
+        return f"Hello {name}"
+
+    cli = AgentCLI("mycli")
+    cli.register_prompt(greet)
+    assert "greet" in cli._prompts
+
+
+def test_parse_input_from_json():
+    """Test _parse_input() with JSON."""
+    @toolable(summary="Test")
+    def my_tool(name: str, count: int):
+        pass
+
+    cli = AgentCLI("test")
+    from toolable.decorators import get_tool_meta
+
+    meta = get_tool_meta(my_tool)
+    params = cli._parse_input(my_tool, meta or {}, [], '{"name": "test", "count": 5}')
+
+    assert params == {"name": "test", "count": 5}
+
+
+def test_parse_input_from_flags():
+    """Test _parse_input() with CLI flags."""
+    @toolable(summary="Test")
+    def my_tool(name: str, count: int):
+        pass
+
+    cli = AgentCLI("test")
+    from toolable.decorators import get_tool_meta
+
+    meta = get_tool_meta(my_tool)
+    args = ["--name", "test", "--count", "5"]
+    params = cli._parse_input(my_tool, meta or {}, args, None)
+
+    assert params == {"name": "test", "count": 5}
+
+
+def test_parse_input_boolean_flag():
+    """Test _parse_input() with boolean flags."""
+    @toolable(summary="Test")
+    def my_tool(verbose: bool):
+        pass
+
+    cli = AgentCLI("test")
+    from toolable.decorators import get_tool_meta
+
+    meta = get_tool_meta(my_tool)
+    args = ["--verbose"]
+    params = cli._parse_input(my_tool, meta or {}, args, None)
+
+    assert params == {"verbose": True}
+
+
+def test_validate_input_valid():
+    """Test _validate_input() with valid input."""
+    class MyInput(ToolInput):
+        name: str
+
+    @toolable(summary="Test", input_model=MyInput)
+    def my_tool(input: MyInput):
+        pass
+
+    cli = AgentCLI("test")
+    from toolable.decorators import get_tool_meta
+
+    meta = get_tool_meta(my_tool)
+    result = cli._validate_input(my_tool, meta, '{"name": "test"}')
+
+    assert result["valid"] is True
+
+
+def test_validate_input_invalid():
+    """Test _validate_input() with invalid input."""
+    class MyInput(ToolInput):
+        name: str
+        count: int
+
+    @toolable(summary="Test", input_model=MyInput)
+    def my_tool(input: MyInput):
+        pass
+
+    cli = AgentCLI("test")
+    from toolable.decorators import get_tool_meta
+
+    meta = get_tool_meta(my_tool)
+    result = cli._validate_input(my_tool, meta, '{"name": "test"}')
+
+    assert result["valid"] is False
+    assert "errors" in result
+
+
+def test_print_discover(capsys):
+    """Test _print_discover()."""
+    @toolable(summary="Test tool")
+    def my_tool():
+        pass
+
+    cli = AgentCLI("mycli", tools=[my_tool])
+    cli._print_discover()
+
+    captured = capsys.readouterr()
+    data = json.loads(captured.out)
+
+    assert data["name"] == "mycli"
+    assert data["version"] == "0.1.0"
+    assert len(data["tools"]) == 1
+    assert data["tools"][0]["name"] == "my_tool"
+    assert data["tools"][0]["summary"] == "Test tool"
