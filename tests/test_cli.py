@@ -1,10 +1,11 @@
-import pytest
 import json
 import sys
-from io import StringIO
+
+import pytest
 from pydantic import Field
+
 from toolable.cli import AgentCLI
-from toolable.decorators import toolable, resource, prompt
+from toolable.decorators import prompt, resource, toolable
 from toolable.input import ToolInput
 
 
@@ -414,7 +415,7 @@ def test_flag_invalid_json_treated_as_string(monkeypatch, capsys):
 # Task 13: Validate Flag Test
 def test_validate_flag_with_pre_validate_error(monkeypatch, capsys):
     """Test --validate catches pre_validate errors."""
-    from toolable.errors import ToolError, ErrorCode
+    from toolable.errors import ErrorCode, ToolError
 
     class MyInput(ToolInput):
         email: str
@@ -534,7 +535,7 @@ def test_json_decode_error_in_tool_execution(monkeypatch, capsys):
 
 def test_pre_validate_error_handling(monkeypatch, capsys):
     """Test pre_validate error is caught and returned."""
-    from toolable.errors import ToolError, ErrorCode
+    from toolable.errors import ErrorCode, ToolError
 
     class MyInput(ToolInput):
         value: str

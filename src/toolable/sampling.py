@@ -1,8 +1,7 @@
-import sys
 import json
-import uuid
+import sys
 import urllib.request
-from typing import Any
+import uuid
 
 # Global config for sample transport
 _sample_config = {

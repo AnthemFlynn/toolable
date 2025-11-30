@@ -1,7 +1,6 @@
-import pytest
 import json
-from io import StringIO
-from toolable.streaming import emit_stream, run_streaming_tool, StreamEvent
+
+from toolable.streaming import StreamEvent, emit_stream, run_streaming_tool
 
 
 def test_emit_stream(capsys):

@@ -1,4 +1,3 @@
-import pytest
 from toolable.response import Response
 
 

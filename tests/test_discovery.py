@@ -1,13 +1,13 @@
-import pytest
 from pydantic import Field
-from toolable.input import ToolInput
-from toolable.decorators import toolable, resource, prompt
+
+from toolable.decorators import prompt, resource, toolable
 from toolable.discovery import (
     extract_schema_from_function,
-    generate_tool_manifest,
-    generate_resource_manifest,
     generate_prompt_manifest,
+    generate_resource_manifest,
+    generate_tool_manifest,
 )
+from toolable.input import ToolInput
 
 
 def test_extract_schema_from_function_signature():

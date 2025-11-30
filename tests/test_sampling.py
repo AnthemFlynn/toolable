@@ -1,8 +1,10 @@
-import pytest
-import sys
 import json
+import sys
 from io import StringIO
-from toolable.sampling import configure_sampling, _sample_config, sample
+
+import pytest
+
+from toolable.sampling import _sample_config, configure_sampling, sample
 
 
 def test_configure_sampling_stdin():

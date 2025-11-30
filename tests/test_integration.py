@@ -1,15 +1,15 @@
-import pytest
 import json
 import sys
-from io import StringIO
+
+import pytest
 from pydantic import Field
+
 from toolable import (
-    toolable,
     AgentCLI,
-    ToolInput,
-    Response,
-    ToolError,
     ErrorCode,
+    ToolError,
+    ToolInput,
+    toolable,
 )
 
 
@@ -186,8 +186,8 @@ def test_end_to_end_dry_run(monkeypatch, capsys):
 
 def test_timeout_fires_on_unix(monkeypatch, capsys):
     """Test that timeout actually fires on Unix systems."""
-    import time
     import platform
+    import time
 
     # Skip on Windows
     if platform.system() == 'Windows':
@@ -214,9 +214,9 @@ def test_timeout_fires_on_unix(monkeypatch, capsys):
 
 def test_timeout_cleanup_on_success(monkeypatch, capsys):
     """Test that timeout is cleaned up when tool completes successfully."""
-    import time
-    import signal
     import platform
+    import signal
+    import time
 
     if platform.system() == 'Windows':
         pytest.skip("Unix-only test")
@@ -348,7 +348,6 @@ def test_sample_via_flag_configuration(monkeypatch, capsys):
 
     @toolable(summary="Test")
     def my_tool():
-        from toolable.sampling import _sample_config
         return {"via": _sample_config["via"]}
 
     cli = AgentCLI(my_tool)

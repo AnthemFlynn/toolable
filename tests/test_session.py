@@ -1,7 +1,7 @@
-import pytest
-import sys
 import json
+import sys
 from io import StringIO
+
 from toolable.session import SessionEvent, run_session_tool
 
 

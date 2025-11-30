@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Test tool that returns invalid JSON for registry tests."""
-import sys
 import json
+import sys
 
 if "--discover" in sys.argv:
     print(json.dumps({

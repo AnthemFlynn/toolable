@@ -1,5 +1,6 @@
+from collections.abc import Callable
 from functools import wraps
-from typing import Any, Callable, Type
+
 from toolable.input import ToolInput
 
 # Metadata storage
@@ -10,7 +11,7 @@ _PROMPT_REGISTRY: dict[Callable, dict] = {}
 
 def toolable(
     summary: str,
-    input_model: Type[ToolInput] | None = None,
+    input_model: type[ToolInput] | None = None,
     examples: list[dict] | None = None,
     tags: list[str] | None = None,
     streaming: bool = False,

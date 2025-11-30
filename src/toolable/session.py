@@ -1,6 +1,7 @@
-import sys
 import json
-from typing import Generator, Any
+import sys
+from collections.abc import Generator
+from typing import Any
 
 # Type alias for session tools
 session = Generator[dict[str, Any], dict[str, Any], None]
