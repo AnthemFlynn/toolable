@@ -96,3 +96,73 @@ def test_session_mode_required_flag(monkeypatch, capsys):
     assert response["error"]["code"] == "INVALID_INPUT"
     assert "--session" in response["error"]["message"]
     assert response["error"]["suggestion"] == "Add --session to the command"
+
+
+def test_resource_uri_with_dots(monkeypatch, capsys):
+    """Test URI pattern with literal dots are escaped."""
+    import sys
+    import json
+
+    @resource(uri_pattern="/files/{id}.json", summary="JSON file")
+    def get_json(id: str):
+        return {"id": id}
+
+    cli = AgentCLI("test")
+    cli.register_resource(get_json)
+
+    # Should match exact .json
+    monkeypatch.setattr(sys, "argv", ["test", "--resource", "/files/123.json"])
+    cli.run()
+    captured = capsys.readouterr()
+    data = json.loads(captured.out)
+    assert data["id"] == "123"
+
+    # Should NOT match with dot as wildcard
+    monkeypatch.setattr(sys, "argv", ["test", "--resource", "/files/123Xjson"])
+    cli.run()
+    captured = capsys.readouterr()
+    data = json.loads(captured.out)
+    assert data["status"] == "error"
+    assert data["error"]["code"] == "NOT_FOUND"
+
+
+def test_resource_uri_with_multiple_placeholders(monkeypatch, capsys):
+    """Test URI with multiple placeholders."""
+    import sys
+    import json
+
+    @resource(uri_pattern="/users/{user_id}/files/{file_id}", summary="User file")
+    def get_user_file(user_id: str, file_id: str):
+        return {"user": user_id, "file": file_id}
+
+    cli = AgentCLI("test")
+    cli.register_resource(get_user_file)
+
+    monkeypatch.setattr(sys, "argv", ["test", "--resource", "/users/alice/files/doc.txt"])
+    cli.run()
+
+    captured = capsys.readouterr()
+    data = json.loads(captured.out)
+
+    assert data["user"] == "alice"
+    assert data["file"] == "doc.txt"
+
+
+def test_resource_uri_regex_chars_escaped(monkeypatch, capsys):
+    """Test URI pattern with special regex characters."""
+    import sys
+    import json
+
+    @resource(uri_pattern="/files/{id}[backup]", summary="Backup file")
+    def get_backup(id: str):
+        return {"id": id}
+
+    cli = AgentCLI("test")
+    cli.register_resource(get_backup)
+
+    # Should match literal [backup]
+    monkeypatch.setattr(sys, "argv", ["test", "--resource", "/files/123[backup]"])
+    cli.run()
+    captured = capsys.readouterr()
+    data = json.loads(captured.out)
+    assert data["id"] == "123"
