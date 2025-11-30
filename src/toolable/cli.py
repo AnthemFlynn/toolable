@@ -251,9 +251,24 @@ class AgentCLI:
                 result = fn(params)
 
             # Handle different return types
-            if meta.get("streaming") and streaming:
+            # Auto-detect streaming/session mode based on tool metadata
+            if meta.get("streaming"):
+                if not streaming:
+                    raise ToolError(
+                        ErrorCode.INVALID_INPUT,
+                        "This tool requires --stream flag",
+                        suggestion="Add --stream to the command",
+                        recoverable=True
+                    )
                 run_streaming_tool(result)
-            elif meta.get("session_mode") and session_mode:
+            elif meta.get("session_mode"):
+                if not session_mode:
+                    raise ToolError(
+                        ErrorCode.INVALID_INPUT,
+                        "This tool requires --session flag",
+                        suggestion="Add --session to the command",
+                        recoverable=True
+                    )
                 final = run_session_tool(result)
                 print(json.dumps(final))
             elif isinstance(result, dict):
@@ -392,9 +407,17 @@ class AgentCLI:
         import re
 
         for pattern, fn in self._resources.items():
-            # Convert pattern to regex
-            regex = re.sub(r"\{(\w+)\}", r"(?P<\1>[^/]+)", pattern)
-            match = re.match(regex, uri)
+            # Convert pattern to regex with proper escaping
+            # First, find all {placeholder} patterns
+            placeholders = re.findall(r"\{(\w+)\}", pattern)
+            # Replace placeholders with temporary markers
+            temp_pattern = re.sub(r"\{(\w+)\}", "\x00\\1\x00", pattern)
+            # Escape all literal regex characters
+            escaped = re.escape(temp_pattern)
+            # Replace markers with named groups
+            regex_pattern = re.sub(r"\x00(\w+)\x00", r"(?P<\1>[^/]+)", escaped)
+            # Use fullmatch to require exact match (no extra trailing content)
+            match = re.fullmatch(regex_pattern, uri)
 
             if match:
                 params = match.groupdict()

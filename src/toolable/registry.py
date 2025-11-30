@@ -97,8 +97,17 @@ class ToolRegistry:
         import re
 
         for pattern, info in self.resources.items():
-            regex = re.sub(r"\{(\w+)\}", r"(?P<\1>[^/]+)", pattern)
-            if re.match(regex, uri):
+            # Convert pattern to regex with proper escaping
+            # First, find all {placeholder} patterns
+            placeholders = re.findall(r"\{(\w+)\}", pattern)
+            # Replace placeholders with temporary markers
+            temp_pattern = re.sub(r"\{(\w+)\}", "\x00\\1\x00", pattern)
+            # Escape all literal regex characters
+            escaped = re.escape(temp_pattern)
+            # Replace markers with named groups
+            regex_pattern = re.sub(r"\x00(\w+)\x00", r"(?P<\1>[^/]+)", escaped)
+            # Use fullmatch to require exact match
+            if re.fullmatch(regex_pattern, uri):
                 path = info["_path"]
                 result = subprocess.run(
                     [str(path), "--resource", uri],
