@@ -11,6 +11,7 @@ from toolable.input import ToolInput
 
 def test_agent_cli_single_tool_shorthand():
     """Test AgentCLI with single tool shorthand."""
+
     @toolable(summary="Test tool")
     def my_tool():
         return {"message": "hello"}
@@ -22,6 +23,7 @@ def test_agent_cli_single_tool_shorthand():
 
 def test_agent_cli_register_tool():
     """Test registering tools."""
+
     @toolable(summary="Tool A")
     def tool_a():
         return "a"
@@ -37,6 +39,7 @@ def test_agent_cli_register_tool():
 
 def test_agent_cli_register_resource():
     """Test registering resources."""
+
     @resource(uri_pattern="/files/{id}", summary="Get file")
     def get_file(id: str):
         return {"id": id}
@@ -48,6 +51,7 @@ def test_agent_cli_register_resource():
 
 def test_agent_cli_register_prompt():
     """Test registering prompts."""
+
     @prompt(summary="Greet", arguments={"name": "Name"})
     def greet(name: str):
         return f"Hello {name}"
@@ -59,6 +63,7 @@ def test_agent_cli_register_prompt():
 
 def test_parse_input_from_json():
     """Test _parse_input() with JSON."""
+
     @toolable(summary="Test")
     def my_tool(name: str, count: int):
         pass
@@ -74,6 +79,7 @@ def test_parse_input_from_json():
 
 def test_parse_input_from_flags():
     """Test _parse_input() with CLI flags."""
+
     @toolable(summary="Test")
     def my_tool(name: str, count: int):
         pass
@@ -90,6 +96,7 @@ def test_parse_input_from_flags():
 
 def test_parse_input_boolean_flag():
     """Test _parse_input() with boolean flags."""
+
     @toolable(summary="Test")
     def my_tool(verbose: bool):
         pass
@@ -106,6 +113,7 @@ def test_parse_input_boolean_flag():
 
 def test_validate_input_valid():
     """Test _validate_input() with valid input."""
+
     class MyInput(ToolInput):
         name: str
 
@@ -124,6 +132,7 @@ def test_validate_input_valid():
 
 def test_validate_input_invalid():
     """Test _validate_input() with invalid input."""
+
     class MyInput(ToolInput):
         name: str
         count: int
@@ -144,6 +153,7 @@ def test_validate_input_invalid():
 
 def test_print_discover(capsys):
     """Test _print_discover()."""
+
     @toolable(summary="Test tool")
     def my_tool():
         pass
@@ -163,6 +173,7 @@ def test_print_discover(capsys):
 
 def test_missing_resource_uri(monkeypatch, capsys):
     """Test --resource flag without URI argument."""
+
     @resource(uri_pattern="/files/{id}", summary="Get file")
     def get_file(id: str):
         return {"id": id}
@@ -182,6 +193,7 @@ def test_missing_resource_uri(monkeypatch, capsys):
 
 def test_missing_prompt_arguments(monkeypatch, capsys):
     """Test --prompt flag without name or args."""
+
     @prompt(summary="Test", arguments={"name": "Name"})
     def my_prompt(name: str):
         return f"Hello {name}"
@@ -200,6 +212,7 @@ def test_missing_prompt_arguments(monkeypatch, capsys):
 
 def test_unknown_command_multi_tool(monkeypatch, capsys):
     """Test unknown command with multiple tools registered."""
+
     @toolable(summary="Tool A")
     def tool_a():
         return "a"
@@ -233,6 +246,7 @@ def test_help_flag_no_tools(monkeypatch, capsys):
 
 def test_tools_flag(monkeypatch, capsys):
     """Test --tools flag."""
+
     @toolable(summary="Test tool")
     def my_tool():
         return {}
@@ -251,6 +265,7 @@ def test_tools_flag(monkeypatch, capsys):
 
 def test_resources_flag(monkeypatch, capsys):
     """Test --resources flag."""
+
     @resource(uri_pattern="/test/{id}", summary="Test resource")
     def get_resource(id: str):
         return {"id": id}
@@ -270,6 +285,7 @@ def test_resources_flag(monkeypatch, capsys):
 
 def test_prompts_flag(monkeypatch, capsys):
     """Test --prompts flag."""
+
     @prompt(summary="Test prompt", arguments={"x": "Value"})
     def my_prompt(x: str):
         return x
@@ -290,6 +306,7 @@ def test_prompts_flag(monkeypatch, capsys):
 # Task 11: Resource Fetching End-to-End Tests
 def test_fetch_resource_success(monkeypatch, capsys):
     """Test successful resource fetch."""
+
     @resource(uri_pattern="/files/{file_id}", summary="Get file")
     def get_file(file_id: str):
         return {"id": file_id, "content": f"Content of {file_id}"}
@@ -309,6 +326,7 @@ def test_fetch_resource_success(monkeypatch, capsys):
 
 def test_fetch_resource_not_found(monkeypatch, capsys):
     """Test resource fetch with no matching pattern."""
+
     @resource(uri_pattern="/files/{id}", summary="Get file")
     def get_file(id: str):
         return {"id": id}
@@ -329,6 +347,7 @@ def test_fetch_resource_not_found(monkeypatch, capsys):
 # Task 12: Prompt Rendering Tests
 def test_render_prompt_success(monkeypatch, capsys):
     """Test successful prompt rendering."""
+
     @prompt(summary="Greeting", arguments={"name": "Name"})
     def greet(name: str):
         return f"Hello {name}!"
@@ -362,12 +381,15 @@ def test_render_prompt_not_found(monkeypatch, capsys):
 # Task 17: Duplicate Flags Test
 def test_duplicate_flags_last_wins(monkeypatch, capsys):
     """Test that duplicate flags - last value wins."""
+
     @toolable(summary="Echo")
     def echo(message: str):
         return {"message": message}
 
     cli = AgentCLI(echo)
-    monkeypatch.setattr(sys, "argv", ["echo", "--message", "first", "--message", "second"])
+    monkeypatch.setattr(
+        sys, "argv", ["echo", "--message", "first", "--message", "second"]
+    )
     cli.run()
 
     captured = capsys.readouterr()
@@ -380,6 +402,7 @@ def test_duplicate_flags_last_wins(monkeypatch, capsys):
 # Task 18: Type Coercion Tests
 def test_flag_json_array_parsing(monkeypatch, capsys):
     """Test that JSON arrays in flag values are parsed."""
+
     @toolable(summary="Process")
     def process(items: list):
         return {"count": len(items)}
@@ -396,6 +419,7 @@ def test_flag_json_array_parsing(monkeypatch, capsys):
 
 def test_flag_invalid_json_treated_as_string(monkeypatch, capsys):
     """Test that invalid JSON in flags is treated as string."""
+
     @toolable(summary="Echo")
     def echo(message: str):
         return {"message": message}
@@ -442,6 +466,7 @@ def test_validate_flag_with_pre_validate_error(monkeypatch, capsys):
 # Task 14: Single-Tool Mode Fallback Test
 def test_single_tool_mode_fallback(monkeypatch, capsys):
     """Test single-tool mode when command doesn't match tool name."""
+
     @toolable(summary="Only tool")
     def only_tool(value: str):
         return {"value": value}
@@ -462,6 +487,7 @@ def test_single_tool_mode_fallback(monkeypatch, capsys):
 # Task 21: Tool-Specific Help Test
 def test_tool_help_output(monkeypatch, capsys):
     """Test tool-specific --help output."""
+
     class MyInput(ToolInput):
         name: str = Field(description="User name")
         age: int = Field(default=18, description="User age")
@@ -488,6 +514,7 @@ def test_tool_help_output(monkeypatch, capsys):
 
 def test_register_non_resource_function(capsys):
     """Test registering a function without @resource decorator raises ValueError."""
+
     def not_a_resource():
         return {}
 
@@ -499,6 +526,7 @@ def test_register_non_resource_function(capsys):
 
 def test_tool_args_when_command_matches(monkeypatch, capsys):
     """Test tool_args is set correctly when command matches tool name."""
+
     @toolable(summary="Test")
     def my_tool(value: str):
         return {"value": value}
@@ -516,6 +544,7 @@ def test_tool_args_when_command_matches(monkeypatch, capsys):
 
 def test_json_decode_error_in_tool_execution(monkeypatch, capsys):
     """Test JSON decode error handling in tool execution."""
+
     @toolable(summary="Test")
     def my_tool(value: str):
         return {"value": value}
@@ -572,7 +601,9 @@ def test_working_dir_changes_directory(monkeypatch, capsys, tmp_path):
         return {"cwd": os.getcwd()}
 
     cli = AgentCLI("test", tools=[my_tool])
-    monkeypatch.setattr(sys, "argv", ["test", "my_tool", json.dumps({"working_dir": str(tmp_path)})])
+    monkeypatch.setattr(
+        sys, "argv", ["test", "my_tool", json.dumps({"working_dir": str(tmp_path)})]
+    )
     cli.run()
 
     captured = capsys.readouterr()
@@ -584,6 +615,7 @@ def test_working_dir_changes_directory(monkeypatch, capsys, tmp_path):
 
 def test_response_already_has_status(monkeypatch, capsys):
     """Test that response with status key is not wrapped."""
+
     @toolable(summary="Test")
     def my_tool():
         return {"status": "custom", "data": "value"}
@@ -602,6 +634,7 @@ def test_response_already_has_status(monkeypatch, capsys):
 
 def test_parse_input_with_input_model_from_flags(monkeypatch, capsys):
     """Test parsing CLI flags into input model."""
+
     class MyInput(ToolInput):
         name: str
         count: int
@@ -611,7 +644,9 @@ def test_parse_input_with_input_model_from_flags(monkeypatch, capsys):
         return {"name": input.name, "count": input.count}
 
     cli = AgentCLI("test", tools=[my_tool])
-    monkeypatch.setattr(sys, "argv", ["test", "my_tool", "--name", "test", "--count", "5"])
+    monkeypatch.setattr(
+        sys, "argv", ["test", "my_tool", "--name", "test", "--count", "5"]
+    )
     cli.run()
 
     captured = capsys.readouterr()
@@ -624,6 +659,7 @@ def test_parse_input_with_input_model_from_flags(monkeypatch, capsys):
 
 def test_discover_with_resources_and_prompts(monkeypatch, capsys):
     """Test _print_discover includes resources and prompts."""
+
     @toolable(summary="Tool")
     def my_tool():
         return {}
@@ -655,6 +691,7 @@ def test_discover_with_resources_and_prompts(monkeypatch, capsys):
 
 def test_fetch_resource_with_exception(monkeypatch, capsys):
     """Test resource fetch handles exceptions."""
+
     @resource(uri_pattern="/files/{id}", summary="Get file")
     def get_file(id: str):
         raise RuntimeError("Database error")
@@ -675,6 +712,7 @@ def test_fetch_resource_with_exception(monkeypatch, capsys):
 
 def test_render_prompt_with_exception(monkeypatch, capsys):
     """Test prompt render handles exceptions."""
+
     @prompt(summary="Test", arguments={"x": "Value"})
     def my_prompt(x: str):
         raise ValueError("Invalid template")
@@ -682,7 +720,9 @@ def test_render_prompt_with_exception(monkeypatch, capsys):
     cli = AgentCLI("test")
     cli.register_prompt(my_prompt)
 
-    monkeypatch.setattr(sys, "argv", ["test", "--prompt", "my_prompt", '{"x": "value"}'])
+    monkeypatch.setattr(
+        sys, "argv", ["test", "--prompt", "my_prompt", '{"x": "value"}']
+    )
     cli.run()
 
     captured = capsys.readouterr()
@@ -695,13 +735,16 @@ def test_render_prompt_with_exception(monkeypatch, capsys):
 
 def test_validate_input_generic_exception(monkeypatch, capsys):
     """Test _validate_input handles generic exceptions."""
+
     @toolable(summary="Test")
     def my_tool(value: str):
         return {}
 
     cli = AgentCLI("test", tools=[my_tool])
     # Pass malformed JSON to trigger generic exception
-    monkeypatch.setattr(sys, "argv", ["test", "my_tool", "--validate", "not json at all"])
+    monkeypatch.setattr(
+        sys, "argv", ["test", "my_tool", "--validate", "not json at all"]
+    )
     cli.run()
 
     captured = capsys.readouterr()
@@ -713,6 +756,7 @@ def test_validate_input_generic_exception(monkeypatch, capsys):
 
 def test_print_tool_help_with_docstring(monkeypatch, capsys):
     """Test _print_tool_help displays function docstring and parameters."""
+
     class MyInput(ToolInput):
         name: str = Field(description="User name")
         count: int = Field(default=10, description="Number of items")
@@ -743,6 +787,7 @@ def test_print_tool_help_with_docstring(monkeypatch, capsys):
 
 def test_tool_returns_non_dict_non_response(monkeypatch, capsys):
     """Test tool returning a non-dict value (like a string or int)."""
+
     @toolable(summary="Return string")
     def my_tool():
         return "plain string result"
@@ -760,6 +805,7 @@ def test_tool_returns_non_dict_non_response(monkeypatch, capsys):
 
 def test_parse_input_flag_without_value_at_end(monkeypatch, capsys):
     """Test parsing flag at end of arguments without a value."""
+
     @toolable(summary="Test")
     def my_tool(verbose: bool = False):
         return {"verbose": verbose}

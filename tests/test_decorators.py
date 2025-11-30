@@ -11,6 +11,7 @@ from toolable.input import ToolInput
 
 def test_toolable_decorator_basic():
     """Test @toolable decorator basic usage."""
+
     @toolable(summary="Test tool")
     def my_tool(name: str):
         return {"message": f"Hello {name}"}
@@ -24,6 +25,7 @@ def test_toolable_decorator_basic():
 
 def test_toolable_decorator_with_options():
     """Test @toolable with all options."""
+
     class MyInput(ToolInput):
         name: str
 
@@ -49,6 +51,7 @@ def test_toolable_decorator_with_options():
 
 def test_toolable_preserves_function():
     """Test that @toolable preserves function behavior."""
+
     @toolable(summary="Test")
     def add(a: int, b: int) -> int:
         return a + b
@@ -60,11 +63,12 @@ def test_toolable_preserves_function():
 
 def test_resource_decorator():
     """Test @resource decorator."""
+
     @resource(
         uri_pattern="/files/{file_id}",
         summary="Get file by ID",
         mime_types=["text/plain"],
-        tags=["files"]
+        tags=["files"],
     )
     def get_file(file_id: str):
         return {"id": file_id, "content": "..."}
@@ -79,10 +83,11 @@ def test_resource_decorator():
 
 def test_prompt_decorator():
     """Test @prompt decorator."""
+
     @prompt(
         summary="Generate greeting",
         arguments={"name": "Person name", "style": "Greeting style"},
-        tags=["greetings"]
+        tags=["greetings"],
     )
     def greeting_prompt(name: str, style: str) -> str:
         return f"Generate a {style} greeting for {name}"
@@ -96,6 +101,7 @@ def test_prompt_decorator():
 
 def test_get_meta_on_undecorated_function():
     """Test get_*_meta on undecorated functions."""
+
     def regular_function():
         pass
 
@@ -106,6 +112,7 @@ def test_get_meta_on_undecorated_function():
 
 def test_multiple_decorated_functions():
     """Test multiple decorated functions don't interfere."""
+
     @toolable(summary="Tool A")
     def tool_a():
         return "a"

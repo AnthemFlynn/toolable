@@ -15,6 +15,7 @@ from toolable import (
 
 def test_end_to_end_simple_tool(monkeypatch, capsys):
     """Test end-to-end execution of a simple tool."""
+
     @toolable(summary="Add two numbers")
     def add(a: int, b: int):
         """Add two numbers and return the sum."""
@@ -35,6 +36,7 @@ def test_end_to_end_simple_tool(monkeypatch, capsys):
 
 def test_end_to_end_with_input_model(monkeypatch, capsys):
     """Test end-to-end with ToolInput model."""
+
     class AddInput(ToolInput):
         a: int = Field(description="First number")
         b: int = Field(description="Second number")
@@ -56,6 +58,7 @@ def test_end_to_end_with_input_model(monkeypatch, capsys):
 
 def test_end_to_end_validation_error(monkeypatch, capsys):
     """Test end-to-end with validation error."""
+
     class MyInput(ToolInput):
         name: str
         age: int
@@ -77,13 +80,14 @@ def test_end_to_end_validation_error(monkeypatch, capsys):
 
 def test_end_to_end_tool_error(monkeypatch, capsys):
     """Test end-to-end with ToolError."""
+
     @toolable(summary="Divide")
     def divide(a: int, b: int):
         if b == 0:
             raise ToolError(
                 ErrorCode.INVALID_INPUT,
                 "Cannot divide by zero",
-                suggestion="Use a non-zero divisor"
+                suggestion="Use a non-zero divisor",
             )
         return {"result": a / b}
 
@@ -102,6 +106,7 @@ def test_end_to_end_tool_error(monkeypatch, capsys):
 
 def test_end_to_end_discover(monkeypatch, capsys):
     """Test --discover flag."""
+
     @toolable(summary="Tool 1")
     def tool1():
         return {}
@@ -124,6 +129,7 @@ def test_end_to_end_discover(monkeypatch, capsys):
 
 def test_end_to_end_manifest(monkeypatch, capsys):
     """Test --manifest flag."""
+
     class MyInput(ToolInput):
         name: str = Field(description="User name")
 
@@ -147,6 +153,7 @@ def test_end_to_end_manifest(monkeypatch, capsys):
 
 def test_end_to_end_cli_flags(monkeypatch, capsys):
     """Test execution with CLI flags."""
+
     @toolable(summary="Echo")
     def echo(message: str, count: int = 1):
         return {"echoes": [message] * count}
@@ -164,6 +171,7 @@ def test_end_to_end_cli_flags(monkeypatch, capsys):
 
 def test_end_to_end_dry_run(monkeypatch, capsys):
     """Test dry_run reserved field."""
+
     class MyInput(ToolInput):
         name: str
         dry_run: bool = False
@@ -173,7 +181,9 @@ def test_end_to_end_dry_run(monkeypatch, capsys):
         return {"created": input.name}
 
     cli = AgentCLI(create_user)
-    monkeypatch.setattr(sys, "argv", ["create_user", '{"name": "Alice", "dry_run": true}'])
+    monkeypatch.setattr(
+        sys, "argv", ["create_user", '{"name": "Alice", "dry_run": true}']
+    )
     cli.run()
 
     captured = capsys.readouterr()
@@ -190,7 +200,7 @@ def test_timeout_fires_on_unix(monkeypatch, capsys):
     import time
 
     # Skip on Windows
-    if platform.system() == 'Windows':
+    if platform.system() == "Windows":
         pytest.skip("Unix-only test")
 
     class TimeoutInput(ToolInput):
@@ -218,7 +228,7 @@ def test_timeout_cleanup_on_success(monkeypatch, capsys):
     import signal
     import time
 
-    if platform.system() == 'Windows':
+    if platform.system() == "Windows":
         pytest.skip("Unix-only test")
 
     class TimeoutInput(ToolInput):
@@ -245,6 +255,7 @@ def test_timeout_cleanup_on_success(monkeypatch, capsys):
 
 def test_timeout_negative_value(monkeypatch, capsys):
     """Test that negative timeout is rejected."""
+
     class TimeoutInput(ToolInput):
         timeout: int
 
@@ -266,6 +277,7 @@ def test_timeout_negative_value(monkeypatch, capsys):
 
 def test_timeout_exceeds_maximum(monkeypatch, capsys):
     """Test that timeout > 600 is rejected."""
+
     class TimeoutInput(ToolInput):
         timeout: int
 
@@ -287,6 +299,7 @@ def test_timeout_exceeds_maximum(monkeypatch, capsys):
 
 def test_working_dir_not_found(monkeypatch, capsys):
     """Test that invalid working_dir is rejected."""
+
     class MyInput(ToolInput):
         working_dir: str
 
@@ -295,7 +308,9 @@ def test_working_dir_not_found(monkeypatch, capsys):
         return {"result": "ok"}
 
     cli = AgentCLI(my_tool)
-    monkeypatch.setattr(sys, "argv", ["my_tool", '{"working_dir": "/nonexistent/path/12345"}'])
+    monkeypatch.setattr(
+        sys, "argv", ["my_tool", '{"working_dir": "/nonexistent/path/12345"}']
+    )
     cli.run()
 
     captured = capsys.readouterr()
@@ -308,6 +323,7 @@ def test_working_dir_not_found(monkeypatch, capsys):
 
 def test_tool_returns_none(monkeypatch, capsys):
     """Test tool that returns None instead of dict."""
+
     @toolable(summary="Broken tool")
     def broken_tool():
         return None
@@ -326,6 +342,7 @@ def test_tool_returns_none(monkeypatch, capsys):
 
 def test_tool_returns_non_serializable(monkeypatch, capsys):
     """Test tool that returns non-JSON-serializable object."""
+
     @toolable(summary="Returns object")
     def object_tool():
         return {"data": object()}  # object() isn't JSON-serializable
@@ -351,7 +368,9 @@ def test_sample_via_flag_configuration(monkeypatch, capsys):
         return {"via": _sample_config["via"]}
 
     cli = AgentCLI(my_tool)
-    monkeypatch.setattr(sys, "argv", ["my_tool", "--sample-via", "http://localhost:8000", "{}"])
+    monkeypatch.setattr(
+        sys, "argv", ["my_tool", "--sample-via", "http://localhost:8000", "{}"]
+    )
     cli.run()
 
     captured = capsys.readouterr()

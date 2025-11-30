@@ -49,9 +49,7 @@ def test_tool_error_override_recoverable():
 def test_tool_error_with_suggestion():
     """Test ToolError with suggestion."""
     error = ToolError(
-        ErrorCode.INVALID_INPUT,
-        "Bad input",
-        suggestion="Try using --help"
+        ErrorCode.INVALID_INPUT, "Bad input", suggestion="Try using --help"
     )
     assert error.suggestion == "Try using --help"
 
@@ -61,7 +59,7 @@ def test_tool_error_with_context():
     error = ToolError(
         ErrorCode.INVALID_INPUT,
         "Bad input",
-        context={"field": "email", "value": "invalid"}
+        context={"field": "email", "value": "invalid"},
     )
     assert error.context == {"field": "email", "value": "invalid"}
 
@@ -72,7 +70,7 @@ def test_tool_error_to_response():
         ErrorCode.INVALID_INPUT,
         "Bad input",
         suggestion="Try again",
-        context={"field": "name"}
+        context={"field": "name"},
     )
     response = error.to_response()
 

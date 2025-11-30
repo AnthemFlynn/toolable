@@ -93,7 +93,7 @@ from toolable.registry import ToolRegistry
 
 __all__ = [
     "toolable",
-    "resource", 
+    "resource",
     "prompt",
     "AgentCLI",
     "ToolInput",
@@ -126,13 +126,13 @@ class ErrorCode(str, Enum):
     NOT_FOUND = "NOT_FOUND"
     CONFLICT = "CONFLICT"
     PRECONDITION = "PRECONDITION"
-    
+
     # Not recoverable
     TIMEOUT = "TIMEOUT"
     PERMISSION = "PERMISSION"
     INTERNAL = "INTERNAL"
     DEPENDENCY = "DEPENDENCY"
-    
+
     @property
     def recoverable(self) -> bool:
         return self in {
@@ -159,7 +159,7 @@ class ToolError(Exception):
         self.suggestion = suggestion
         self.context = context
         super().__init__(message)
-    
+
     def to_response(self) -> dict:
         """Convert to response envelope."""
         from toolable.response import Response
@@ -183,7 +183,7 @@ class Response:
     @staticmethod
     def success(result: dict[str, Any]) -> dict:
         return {"status": "success", "result": result}
-    
+
     @staticmethod
     def error(
         code: str,
@@ -201,9 +201,9 @@ class Response:
             error_obj["suggestion"] = suggestion
         if context:
             error_obj["context"] = context
-        
+
         return {"status": "error", "error": error_obj}
-    
+
     @staticmethod
     def partial(
         result: dict[str, Any],
@@ -219,10 +219,10 @@ class Response:
                 if isinstance(v, list):
                     succeeded_count = len(v)
                     break
-        
+
         failed_count = len(errors)
         recoverable_count = sum(1 for e in errors if e.get("recoverable", False))
-        
+
         # Determine status
         if failed_count == 0:
             status = "success"
@@ -230,7 +230,7 @@ class Response:
             status = "error"
         else:
             status = "partial"
-        
+
         response = {
             "status": status,
             "result": result,
@@ -241,10 +241,10 @@ class Response:
                 "recoverable_failures": recoverable_count,
             },
         }
-        
+
         if errors:
             response["errors"] = errors
-        
+
         return response
 ```
 
@@ -258,30 +258,30 @@ from typing import Any
 
 class ToolInput(BaseModel):
     """Base class for toolable inputs."""
-    
+
     model_config = ConfigDict(
         extra="forbid",
         validate_default=True,
     )
-    
+
     # Reserved field names (subclasses define to activate):
     # working_dir: str   → chdir before execution
-    # timeout: int       → kill after N seconds  
+    # timeout: int       → kill after N seconds
     # dry_run: bool      → validate only
     # verbose: bool      → extra detail in response
-    
+
     def context(self) -> dict[str, Any]:
         """Override to inject runtime context."""
         return {}
-    
+
     def pre_validate(self) -> None:
         """Override for validation requiring I/O.
-        
+
         Called after Pydantic validation, before execution.
         Raise ToolError for recoverable input problems.
         """
         pass
-    
+
     def to_log_safe(self) -> dict[str, Any]:
         """Override to redact sensitive fields for logging."""
         return self.model_dump()
@@ -320,15 +320,15 @@ def toolable(
             "session_mode": session_mode,
             "fn": fn,
         }
-        
+
         @wraps(fn)
         def wrapper(*args, **kwargs):
             return fn(*args, **kwargs)
-        
+
         # Attach metadata to wrapper
         wrapper._toolable_meta = _TOOL_REGISTRY[fn]
         return wrapper
-    
+
     return decorator
 
 def resource(
@@ -346,14 +346,14 @@ def resource(
             "tags": tags or [],
             "fn": fn,
         }
-        
+
         @wraps(fn)
         def wrapper(*args, **kwargs):
             return fn(*args, **kwargs)
-        
+
         wrapper._resource_meta = _RESOURCE_REGISTRY[fn]
         return wrapper
-    
+
     return decorator
 
 def prompt(
@@ -369,14 +369,14 @@ def prompt(
             "tags": tags or [],
             "fn": fn,
         }
-        
+
         @wraps(fn)
         def wrapper(*args, **kwargs):
             return fn(*args, **kwargs)
-        
+
         wrapper._prompt_meta = _PROMPT_REGISTRY[fn]
         return wrapper
-    
+
     return decorator
 
 def get_tool_meta(fn: Callable) -> dict | None:
@@ -403,19 +403,19 @@ def extract_schema_from_function(fn: Callable, input_model=None) -> dict:
     """Extract JSON schema from function signature or input model."""
     if input_model:
         return input_model.model_json_schema()
-    
+
     hints = get_type_hints(fn)
     sig = inspect.signature(fn)
-    
+
     properties = {}
     required = []
-    
+
     for name, param in sig.parameters.items():
         if name in ("self", "cls", "input"):
             continue
-        
+
         prop = {"type": _python_type_to_json(hints.get(name, str))}
-        
+
         # Extract Field metadata if present
         if isinstance(param.default, FieldInfo):
             field: FieldInfo = param.default
@@ -427,24 +427,24 @@ def extract_schema_from_function(fn: Callable, input_model=None) -> dict:
             prop["default"] = param.default
         else:
             required.append(name)
-        
+
         properties[name] = prop
-    
+
     schema = {"type": "object", "properties": properties}
     if required:
         schema["required"] = required
-    
+
     return schema
 
 def _python_type_to_json(py_type) -> str:
     """Map Python types to JSON schema types."""
     origin = getattr(py_type, "__origin__", None)
-    
+
     if origin is list:
         return "array"
     if origin is dict:
         return "object"
-    
+
     mapping = {
         str: "string",
         int: "integer",
@@ -458,7 +458,7 @@ def _python_type_to_json(py_type) -> str:
 def generate_tool_manifest(fn: Callable, meta: dict) -> dict:
     """Generate full manifest for a tool."""
     schema = extract_schema_from_function(fn, meta.get("input_model"))
-    
+
     manifest = {
         "name": fn.__name__,
         "summary": meta["summary"],
@@ -467,12 +467,12 @@ def generate_tool_manifest(fn: Callable, meta: dict) -> dict:
         "session_mode": meta.get("session_mode", False),
         "schema": schema,
     }
-    
+
     if meta.get("examples"):
         manifest["examples"] = meta["examples"]
     if meta.get("tags"):
         manifest["tags"] = meta["tags"]
-    
+
     return manifest
 
 def generate_resource_manifest(fn: Callable, meta: dict) -> dict:
@@ -512,36 +512,36 @@ def emit_stream(data: dict) -> None:
 
 def run_streaming_tool(gen: stream) -> dict | None:
     """Execute a streaming tool, emitting events.
-    
+
     Returns the final result if present.
     """
     final_result = None
-    
+
     for event in gen:
         emit_stream(event)
         if event.get("type") == "result":
             final_result = event
-    
+
     return final_result
 
 class StreamEvent:
     """Helpers for creating stream events."""
-    
+
     @staticmethod
     def progress(message: str, percent: int | None = None) -> dict:
         event = {"type": "progress", "message": message}
         if percent is not None:
             event["percent"] = percent
         return event
-    
+
     @staticmethod
     def log(message: str, level: str = "info") -> dict:
         return {"type": "log", "level": level, "message": message}
-    
+
     @staticmethod
     def artifact(name: str, uri: str) -> dict:
         return {"type": "artifact", "name": name, "uri": uri}
-    
+
     @staticmethod
     def result(response: dict) -> dict:
         return {"type": "result", **response}
@@ -576,35 +576,35 @@ def run_session_tool(gen: session) -> dict:
         # Get first yield (session_start)
         event = next(gen)
         emit_session(event)
-        
+
         # Loop: receive input, send to generator, emit response
         while True:
             input_data = receive_session_input()
             try:
                 event = gen.send(input_data)
                 emit_session(event)
-                
+
                 if event.get("type") == "session_end":
                     break
             except StopIteration:
                 break
-        
+
         return {"status": "success"}
-    
+
     except Exception as e:
         return {"status": "error", "error": {"code": "INTERNAL", "message": str(e), "recoverable": False}}
 
 class SessionEvent:
     """Helpers for creating session events."""
-    
+
     @staticmethod
     def start(message: str, prompt: str = "> ") -> dict:
         return {"type": "session_start", "message": message, "prompt": prompt}
-    
+
     @staticmethod
     def end(status: str = "success") -> dict:
         return {"type": "session_end", "status": status}
-    
+
     @staticmethod
     def awaiting(prompt: str = "> ") -> dict:
         return {"type": "awaiting_input", "prompt": prompt}
@@ -620,10 +620,10 @@ import json
 
 class _Notify:
     """Notification emitter (writes to stderr)."""
-    
+
     def _emit(self, data: dict) -> None:
         print(json.dumps(data), file=sys.stderr, flush=True)
-    
+
     def progress(self, message: str, percent: int | None = None) -> None:
         event = {
             "type": "notification",
@@ -633,7 +633,7 @@ class _Notify:
         if percent is not None:
             event["percent"] = percent
         self._emit(event)
-    
+
     def log(self, message: str, level: str = "info") -> None:
         self._emit({
             "type": "notification",
@@ -641,7 +641,7 @@ class _Notify:
             "level": level,
             "message": message,
         })
-    
+
     def artifact(self, name: str, uri: str) -> None:
         self._emit({
             "type": "notification",
@@ -683,7 +683,7 @@ def sample(
 ) -> str:
     """Request LLM completion from caller. Blocks until response."""
     request_id = str(uuid.uuid4())[:8]
-    
+
     request = {
         "type": "sample_request",
         "id": request_id,
@@ -696,9 +696,9 @@ def sample(
         request["temperature"] = temperature
     if stop_sequences:
         request["stop_sequences"] = stop_sequences
-    
+
     via = _sample_config["via"]
-    
+
     if via == "stdin":
         return _sample_via_stdin(request, request_id)
     elif via.startswith("http"):
@@ -710,13 +710,13 @@ def _sample_via_stdin(request: dict, request_id: str) -> str:
     """Request sample via stdin/stdout protocol."""
     # Emit request
     print(json.dumps(request), flush=True)
-    
+
     # Wait for response
     while True:
         line = sys.stdin.readline()
         if not line:
             raise RuntimeError("stdin closed while waiting for sample response")
-        
+
         response = json.loads(line.strip())
         if response.get("type") == "sample_response" and response.get("id") == request_id:
             return response.get("content", "")
@@ -730,7 +730,7 @@ def _sample_via_http(request: dict, url: str) -> str:
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    
+
     with urllib.request.urlopen(req) as resp:
         response = json.loads(resp.read().decode("utf-8"))
         return response.get("content", "")
@@ -752,7 +752,7 @@ from pydantic import ValidationError
 from toolable.decorators import get_tool_meta, get_resource_meta, get_prompt_meta
 from toolable.discovery import (
     generate_tool_manifest,
-    generate_resource_manifest, 
+    generate_resource_manifest,
     generate_prompt_manifest,
     extract_schema_from_function,
 )
@@ -778,40 +778,40 @@ class AgentCLI:
         else:
             self.name = name
             self._tools = {}
-        
+
         self._resources = {}
         self._prompts = {}
         self.version = version
-        
+
         # Register initial tools
         if tools:
             for tool in tools:
                 self.register(tool)
-    
+
     def register(self, fn: Callable, name: str | None = None) -> None:
         """Register a tool."""
         tool_name = name or fn.__name__
         self._tools[tool_name] = fn
-    
+
     def register_resource(self, fn: Callable) -> None:
         """Register a resource."""
         meta = get_resource_meta(fn)
         if not meta:
             raise ValueError(f"{fn.__name__} is not decorated with @resource")
         self._resources[meta["uri_pattern"]] = fn
-    
+
     def register_prompt(self, fn: Callable) -> None:
         """Register a prompt."""
         self._prompts[fn.__name__] = fn
-    
+
     def run(self) -> None:
         """Execute CLI based on arguments."""
         args = sys.argv[1:]
-        
+
         if not args or "--help" in args and len(args) == 1:
             self._print_help()
             return
-        
+
         # Global flags
         if "--discover" in args:
             self._print_discover()
@@ -825,21 +825,21 @@ class AgentCLI:
         if "--prompts" in args:
             self._print_prompts()
             return
-        
+
         # Resource fetch
         if "--resource" in args:
             idx = args.index("--resource")
             if idx + 1 < len(args):
                 self._fetch_resource(args[idx + 1])
             return
-        
+
         # Prompt render
         if "--prompt" in args:
             idx = args.index("--prompt")
             if idx + 2 < len(args):
                 self._render_prompt(args[idx + 1], args[idx + 2])
             return
-        
+
         # Tool execution
         cmd = args[0]
         if cmd not in self._tools:
@@ -852,41 +852,41 @@ class AgentCLI:
                 return
         else:
             tool_args = args[1:]
-        
+
         self._run_tool(cmd, tool_args)
-    
+
     def _run_tool(self, name: str, args: list[str]) -> None:
         """Execute a tool."""
         fn = self._tools[name]
         meta = get_tool_meta(fn) or {}
-        
+
         # Handle tool-specific flags
         if "--manifest" in args:
             manifest = generate_tool_manifest(fn, meta)
             print(json.dumps(manifest, indent=2))
             return
-        
+
         if "--help" in args:
             self._print_tool_help(fn, meta)
             return
-        
+
         # Parse input
         streaming = "--stream" in args
         session_mode = "--session" in args
-        
+
         # Configure sampling if specified
         if "--sample-via" in args:
             idx = args.index("--sample-via")
             if idx + 1 < len(args):
                 configure_sampling(args[idx + 1])
-        
+
         # Extract JSON input or parse flags
         json_input = None
         for arg in args:
             if arg.startswith("{"):
                 json_input = arg
                 break
-        
+
         if "--validate" in args:
             idx = args.index("--validate")
             if idx + 1 < len(args):
@@ -894,7 +894,7 @@ class AgentCLI:
             result = self._validate_input(fn, meta, json_input or "{}")
             print(json.dumps(result))
             return
-        
+
         # Build params
         try:
             params = self._parse_input(fn, meta, args, json_input)
@@ -912,10 +912,10 @@ class AgentCLI:
                 recoverable=True
             )))
             return
-        
+
         # Handle reserved fields
         input_obj = params if isinstance(params, ToolInput) else None
-        
+
         if input_obj:
             # Run pre_validate hook
             try:
@@ -923,15 +923,15 @@ class AgentCLI:
             except ToolError as e:
                 print(json.dumps(e.to_response()))
                 return
-            
+
             # Handle working_dir
             if hasattr(input_obj, "working_dir") and input_obj.working_dir:
                 os.chdir(input_obj.working_dir)
-            
+
             # Handle timeout
             if hasattr(input_obj, "timeout") and input_obj.timeout:
                 signal.alarm(input_obj.timeout)
-            
+
             # Handle dry_run
             if hasattr(input_obj, "dry_run") and input_obj.dry_run:
                 print(json.dumps(Response.success({
@@ -939,7 +939,7 @@ class AgentCLI:
                     "would_execute": input_obj.to_log_safe()
                 })))
                 return
-        
+
         # Execute tool
         try:
             if meta.get("input_model"):
@@ -949,7 +949,7 @@ class AgentCLI:
                     result = fn(**params)
                 else:
                     result = fn(params)
-            
+
             # Handle different return types
             if meta.get("streaming") and streaming:
                 run_streaming_tool(result)
@@ -964,7 +964,7 @@ class AgentCLI:
                     print(json.dumps(Response.success(result)))
             else:
                 print(json.dumps(Response.success({"result": result})))
-        
+
         except ToolError as e:
             print(json.dumps(e.to_response()))
         except Exception as e:
@@ -973,17 +973,17 @@ class AgentCLI:
                 str(e),
                 recoverable=False
             )))
-    
+
     def _parse_input(self, fn: Callable, meta: dict, args: list[str], json_input: str | None) -> Any:
         """Parse input from JSON or CLI flags."""
         input_model = meta.get("input_model")
-        
+
         if json_input:
             data = json.loads(json_input)
             if input_model:
                 return input_model(**data)
             return data
-        
+
         # Parse CLI flags into dict
         data = {}
         i = 0
@@ -1004,21 +1004,21 @@ class AgentCLI:
                     i += 1
             else:
                 i += 1
-        
+
         if input_model:
             return input_model(**data)
         return data
-    
+
     def _validate_input(self, fn: Callable, meta: dict, json_input: str) -> dict:
         """Validate input without executing."""
         try:
             data = json.loads(json_input)
             input_model = meta.get("input_model")
-            
+
             if input_model:
                 obj = input_model(**data)
                 obj.pre_validate()
-            
+
             return {"valid": True}
         except ValidationError as e:
             return {"valid": False, "errors": e.errors()}
@@ -1026,7 +1026,7 @@ class AgentCLI:
             return {"valid": False, "errors": [{"code": e.code.value, "message": e.message}]}
         except Exception as e:
             return {"valid": False, "errors": [{"message": str(e)}]}
-    
+
     def _print_discover(self) -> None:
         """Print full discovery output."""
         output = {
@@ -1036,7 +1036,7 @@ class AgentCLI:
             "resources": [],
             "prompts": [],
         }
-        
+
         for name, fn in self._tools.items():
             meta = get_tool_meta(fn) or {"summary": ""}
             output["tools"].append({
@@ -1045,17 +1045,17 @@ class AgentCLI:
                 "streaming": meta.get("streaming", False),
                 "session_mode": meta.get("session_mode", False),
             })
-        
+
         for pattern, fn in self._resources.items():
             meta = get_resource_meta(fn) or {}
             output["resources"].append(generate_resource_manifest(fn, meta))
-        
+
         for name, fn in self._prompts.items():
             meta = get_prompt_meta(fn) or {}
             output["prompts"].append(generate_prompt_manifest(fn, meta))
-        
+
         print(json.dumps(output, indent=2))
-    
+
     def _print_tools(self) -> None:
         """Print tools only."""
         tools = []
@@ -1063,7 +1063,7 @@ class AgentCLI:
             meta = get_tool_meta(fn) or {}
             tools.append({"name": name, "summary": meta.get("summary", "")})
         print(json.dumps({"tools": tools}, indent=2))
-    
+
     def _print_resources(self) -> None:
         """Print resources only."""
         resources = []
@@ -1071,7 +1071,7 @@ class AgentCLI:
             meta = get_resource_meta(fn) or {}
             resources.append(generate_resource_manifest(fn, meta))
         print(json.dumps({"resources": resources}, indent=2))
-    
+
     def _print_prompts(self) -> None:
         """Print prompts only."""
         prompts = []
@@ -1079,16 +1079,16 @@ class AgentCLI:
             meta = get_prompt_meta(fn) or {}
             prompts.append(generate_prompt_manifest(fn, meta))
         print(json.dumps({"prompts": prompts}, indent=2))
-    
+
     def _fetch_resource(self, uri: str) -> None:
         """Fetch a resource by URI."""
         import re
-        
+
         for pattern, fn in self._resources.items():
             # Convert pattern to regex
             regex = re.sub(r"\{(\w+)\}", r"(?P<\1>[^/]+)", pattern)
             match = re.match(regex, uri)
-            
+
             if match:
                 params = match.groupdict()
                 try:
@@ -1097,15 +1097,15 @@ class AgentCLI:
                 except Exception as e:
                     print(json.dumps(Response.error("INTERNAL", str(e))))
                 return
-        
+
         print(json.dumps(Response.error("NOT_FOUND", f"No resource matches URI: {uri}", recoverable=True)))
-    
+
     def _render_prompt(self, name: str, json_args: str) -> None:
         """Render a prompt."""
         if name not in self._prompts:
             print(json.dumps(Response.error("NOT_FOUND", f"Unknown prompt: {name}", recoverable=True)))
             return
-        
+
         try:
             args = json.loads(json_args)
             fn = self._prompts[name]
@@ -1113,7 +1113,7 @@ class AgentCLI:
             print(json.dumps(result))
         except Exception as e:
             print(json.dumps(Response.error("INTERNAL", str(e))))
-    
+
     def _print_help(self) -> None:
         """Print human-readable help."""
         print(f"{self.name} v{self.version}")
@@ -1128,7 +1128,7 @@ class AgentCLI:
         for name, fn in self._tools.items():
             meta = get_tool_meta(fn) or {}
             print(f"  {name:20} {meta.get('summary', '')}")
-    
+
     def _print_tool_help(self, fn: Callable, meta: dict) -> None:
         """Print help for a specific tool."""
         print(f"{fn.__name__} - {meta.get('summary', '')}")
@@ -1136,11 +1136,11 @@ class AgentCLI:
         if fn.__doc__:
             print(fn.__doc__)
             print()
-        
+
         schema = extract_schema_from_function(fn, meta.get("input_model"))
         props = schema.get("properties", {})
         required = schema.get("required", [])
-        
+
         if props:
             print("Parameters:")
             for name, prop in props.items():
@@ -1162,20 +1162,20 @@ from typing import Any
 
 class ToolRegistry:
     """Registry for discovering and calling external toolable executables."""
-    
+
     def __init__(self, tool_paths: list[Path | str]):
         self.tools: dict[str, dict] = {}
         self.resources: dict[str, dict] = {}
         self.prompts: dict[str, dict] = {}
-        
+
         for path in tool_paths:
             self._load_tool(Path(path))
-    
+
     def _load_tool(self, path: Path) -> None:
         """Load manifest from a toolable executable."""
         if not path.exists():
             return
-        
+
         try:
             result = subprocess.run(
                 [str(path), "--discover"],
@@ -1183,57 +1183,57 @@ class ToolRegistry:
                 text=True,
                 timeout=5,
             )
-            
+
             if result.returncode == 0:
                 manifest = json.loads(result.stdout)
-                
+
                 for tool in manifest.get("tools", []):
                     tool["_path"] = path
                     self.tools[tool["name"]] = tool
-                
+
                 for resource in manifest.get("resources", []):
                     resource["_path"] = path
                     self.resources[resource["uri_pattern"]] = resource
-                
+
                 for prompt in manifest.get("prompts", []):
                     prompt["_path"] = path
                     self.prompts[prompt["name"]] = prompt
-        
+
         except (subprocess.TimeoutExpired, json.JSONDecodeError, OSError):
             pass
-    
+
     def discover(self) -> dict[str, str]:
         """Return tool summaries for LLM context injection."""
         return {name: info["summary"] for name, info in self.tools.items()}
-    
+
     def schema(self, name: str) -> dict:
         """Get full schema for a tool."""
         tool = self.tools.get(name)
         if not tool:
             raise KeyError(f"Unknown tool: {name}")
-        
+
         path = tool["_path"]
         result = subprocess.run(
             [str(path), name, "--manifest"],
             capture_output=True,
             text=True,
         )
-        
+
         return json.loads(result.stdout)
-    
+
     def call(self, name: str, params: dict) -> dict:
         """Execute a tool and return response."""
         tool = self.tools.get(name)
         if not tool:
             return {"status": "error", "error": {"code": "NOT_FOUND", "message": f"Unknown tool: {name}", "recoverable": True}}
-        
+
         path = tool["_path"]
         result = subprocess.run(
             [str(path), name, json.dumps(params)],
             capture_output=True,
             text=True,
         )
-        
+
         try:
             return json.loads(result.stdout)
         except json.JSONDecodeError:
@@ -1245,11 +1245,11 @@ class ToolRegistry:
                     "recoverable": False,
                 }
             }
-    
+
     def fetch_resource(self, uri: str) -> dict:
         """Fetch a resource by URI."""
         import re
-        
+
         for pattern, info in self.resources.items():
             regex = re.sub(r"\{(\w+)\}", r"(?P<\1>[^/]+)", pattern)
             if re.match(regex, uri):
@@ -1260,22 +1260,22 @@ class ToolRegistry:
                     text=True,
                 )
                 return json.loads(result.stdout)
-        
+
         return {"status": "error", "error": {"code": "NOT_FOUND", "message": f"No resource matches: {uri}", "recoverable": True}}
-    
+
     def render_prompt(self, name: str, args: dict) -> dict:
         """Render a prompt."""
         prompt = self.prompts.get(name)
         if not prompt:
             return {"status": "error", "error": {"code": "NOT_FOUND", "message": f"Unknown prompt: {name}", "recoverable": True}}
-        
+
         path = prompt["_path"]
         result = subprocess.run(
             [str(path), "--prompt", name, json.dumps(args)],
             capture_output=True,
             text=True,
         )
-        
+
         return json.loads(result.stdout)
 ```
 

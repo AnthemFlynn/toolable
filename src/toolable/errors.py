@@ -40,7 +40,9 @@ class ToolError(Exception):
     ):
         self.code = ErrorCode(code) if isinstance(code, str) else code
         self.message = message
-        self.recoverable = recoverable if recoverable is not None else self.code.recoverable
+        self.recoverable = (
+            recoverable if recoverable is not None else self.code.recoverable
+        )
         self.suggestion = suggestion
         self.context = context
         super().__init__(message)
@@ -52,6 +54,7 @@ class ToolError(Exception):
         This is a common Python pattern for breaking import cycles.
         """
         from toolable.response import Response
+
         return Response.error(
             code=self.code.value,
             message=self.message,

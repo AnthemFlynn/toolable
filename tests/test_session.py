@@ -8,11 +8,7 @@ from toolable.session import SessionEvent, run_session_tool
 def test_session_event_start():
     """Test SessionEvent.start()."""
     event = SessionEvent.start("Welcome!", prompt=">> ")
-    assert event == {
-        "type": "session_start",
-        "message": "Welcome!",
-        "prompt": ">> "
-    }
+    assert event == {"type": "session_start", "message": "Welcome!", "prompt": ">> "}
 
 
 def test_session_event_start_default_prompt():
@@ -47,6 +43,7 @@ def test_session_event_awaiting_default_prompt():
 
 def test_run_session_tool_full_flow(monkeypatch):
     """Test full session tool execution flow."""
+
     def my_session():
         yield SessionEvent.start("Started")
         user_input = yield SessionEvent.awaiting()
@@ -59,6 +56,7 @@ def test_run_session_tool_full_flow(monkeypatch):
 
     # Capture stdout
     outputs = []
+
     def capture_print(*args, **kwargs):
         if args:
             outputs.append(args[0])
@@ -78,6 +76,7 @@ def test_run_session_tool_full_flow(monkeypatch):
 
 def test_session_tool_generator_error(monkeypatch):
     """Test session tool that raises exception."""
+
     def broken_session():
         yield SessionEvent.start("Start")
         raise ValueError("Broken!")
@@ -88,6 +87,7 @@ def test_session_tool_generator_error(monkeypatch):
 
     # Capture stdout
     outputs = []
+
     def capture_print(*args, **kwargs):
         if args:
             outputs.append(args[0])
@@ -103,6 +103,7 @@ def test_session_tool_generator_error(monkeypatch):
 
 def test_session_tool_early_stop_iteration(monkeypatch):
     """Test session tool that stops iteration early."""
+
     def early_stop_session():
         yield SessionEvent.start("Start")
         # Generator ends without session_end event
@@ -114,6 +115,7 @@ def test_session_tool_early_stop_iteration(monkeypatch):
 
     # Capture stdout
     outputs = []
+
     def capture_print(*args, **kwargs):
         if args:
             outputs.append(args[0])
@@ -128,6 +130,7 @@ def test_session_tool_early_stop_iteration(monkeypatch):
 
 def test_session_tool_quit_action(monkeypatch):
     """Test session tool with quit action from empty stdin."""
+
     def quit_session():
         yield SessionEvent.start("Start")
         user_input = yield SessionEvent.awaiting()
@@ -136,11 +139,12 @@ def test_session_tool_quit_action(monkeypatch):
             yield SessionEvent.end(status="cancelled")
 
     # Mock stdin with empty line (EOF)
-    fake_stdin = StringIO('')
+    fake_stdin = StringIO("")
     monkeypatch.setattr(sys, "stdin", fake_stdin)
 
     # Capture stdout
     outputs = []
+
     def capture_print(*args, **kwargs):
         if args:
             outputs.append(args[0])
@@ -159,6 +163,7 @@ def test_session_tool_multiple_inputs(monkeypatch):
     Note: Due to generator semantics, input sent at step N is assigned to yield from step N-1.
     So we use the pattern: yield awaiting -> value arrives on next send -> yield awaiting -> etc.
     """
+
     def multi_input_session():
         yield SessionEvent.start("Calculator")
 
@@ -184,6 +189,7 @@ def test_session_tool_multiple_inputs(monkeypatch):
 
     # Capture stdout
     outputs = []
+
     def capture_print(*args, **kwargs):
         if args:
             outputs.append(args[0])
@@ -208,6 +214,7 @@ def test_session_tool_multiple_inputs(monkeypatch):
 
 def test_session_tool_error_during_send(monkeypatch):
     """Test session tool that raises error when receiving input."""
+
     def error_on_input_session():
         yield SessionEvent.start("Start")
         # Get input via yield awaiting pattern
@@ -228,6 +235,7 @@ def test_session_tool_error_during_send(monkeypatch):
 
     # Capture stdout
     outputs = []
+
     def capture_print(*args, **kwargs):
         if args:
             outputs.append(args[0])
@@ -244,6 +252,7 @@ def test_session_tool_error_during_send(monkeypatch):
 
 def test_session_tool_handles_json_decode_error(monkeypatch):
     """Test session tool with invalid JSON input."""
+
     def json_session():
         yield SessionEvent.start("Start")
         yield SessionEvent.awaiting()
@@ -252,11 +261,12 @@ def test_session_tool_handles_json_decode_error(monkeypatch):
         yield SessionEvent.end()
 
     # Mock stdin with invalid JSON
-    fake_stdin = StringIO('not valid json\n')
+    fake_stdin = StringIO("not valid json\n")
     monkeypatch.setattr(sys, "stdin", fake_stdin)
 
     # Capture stdout
     outputs = []
+
     def capture_print(*args, **kwargs):
         if args:
             outputs.append(args[0])

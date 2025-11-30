@@ -12,6 +12,7 @@ from toolable.input import ToolInput
 
 def test_extract_schema_from_function_signature():
     """Test schema extraction from function signature."""
+
     def my_func(name: str, count: int = 5):
         pass
 
@@ -25,9 +26,10 @@ def test_extract_schema_from_function_signature():
 
 def test_extract_schema_with_field_metadata():
     """Test schema extraction with Field() metadata."""
+
     def my_func(
         name: str = Field(description="User name"),
-        age: int = Field(default=0, description="User age")
+        age: int = Field(default=0, description="User age"),
     ):
         pass
 
@@ -39,6 +41,7 @@ def test_extract_schema_with_field_metadata():
 
 def test_extract_schema_from_input_model():
     """Test schema extraction from ToolInput model."""
+
     class MyInput(ToolInput):
         name: str = Field(description="User name")
         count: int = 5
@@ -53,11 +56,8 @@ def test_extract_schema_from_input_model():
 
 def test_extract_schema_complex_types():
     """Test schema extraction with complex types."""
-    def my_func(
-        tags: list[str],
-        metadata: dict,
-        active: bool
-    ):
+
+    def my_func(tags: list[str], metadata: dict, active: bool):
         pass
 
     schema = extract_schema_from_function(my_func)
@@ -68,17 +68,16 @@ def test_extract_schema_complex_types():
 
 def test_generate_tool_manifest():
     """Test generate_tool_manifest()."""
+
     @toolable(
-        summary="Test tool",
-        examples=[{"name": "test"}],
-        tags=["demo"],
-        streaming=True
+        summary="Test tool", examples=[{"name": "test"}], tags=["demo"], streaming=True
     )
     def my_tool(name: str, count: int = 5):
         """This is a test tool."""
         pass
 
     from toolable.decorators import get_tool_meta
+
     meta = get_tool_meta(my_tool)
     manifest = generate_tool_manifest(my_tool, meta)
 
@@ -94,16 +93,18 @@ def test_generate_tool_manifest():
 
 def test_generate_resource_manifest():
     """Test generate_resource_manifest()."""
+
     @resource(
         uri_pattern="/files/{file_id}",
         summary="Get file",
         mime_types=["text/plain"],
-        tags=["files"]
+        tags=["files"],
     )
     def get_file(file_id: str):
         pass
 
     from toolable.decorators import get_resource_meta
+
     meta = get_resource_meta(get_file)
     manifest = generate_resource_manifest(get_file, meta)
 
@@ -115,15 +116,15 @@ def test_generate_resource_manifest():
 
 def test_generate_prompt_manifest():
     """Test generate_prompt_manifest()."""
+
     @prompt(
-        summary="Greeting prompt",
-        arguments={"name": "Person name"},
-        tags=["greetings"]
+        summary="Greeting prompt", arguments={"name": "Person name"}, tags=["greetings"]
     )
     def greeting(name: str):
         pass
 
     from toolable.decorators import get_prompt_meta
+
     meta = get_prompt_meta(greeting)
     manifest = generate_prompt_manifest(greeting, meta)
 

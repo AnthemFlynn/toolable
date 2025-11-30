@@ -31,18 +31,23 @@ def test_sample_stdin_request_format(monkeypatch):
     configure_sampling("stdin")
 
     # Mock stdin with response - need to match the request ID
-    fake_stdin = StringIO('{"type": "sample_response", "id": "test1234", "content": "AI response"}\n')
+    fake_stdin = StringIO(
+        '{"type": "sample_response", "id": "test1234", "content": "AI response"}\n'
+    )
     monkeypatch.setattr(sys, "stdin", fake_stdin)
 
     # Mock uuid to get predictable request ID
     import uuid
+
     class MockUUID:
         def __str__(self):
             return "test12345678"
+
     monkeypatch.setattr(uuid, "uuid4", lambda: MockUUID())
 
     # Capture print calls to verify request format
     printed_requests = []
+
     def mock_print(*args, **kwargs):
         if args:
             printed_requests.append(args[0])
@@ -70,18 +75,23 @@ def test_sample_stdin_with_all_params(monkeypatch):
     configure_sampling("stdin")
 
     # Mock stdin with response - match the 8-char ID
-    fake_stdin = StringIO('{"type": "sample_response", "id": "abc12345", "content": "Full response"}\n')
+    fake_stdin = StringIO(
+        '{"type": "sample_response", "id": "abc12345", "content": "Full response"}\n'
+    )
     monkeypatch.setattr(sys, "stdin", fake_stdin)
 
     # Mock uuid
     import uuid
+
     class MockUUID:
         def __str__(self):
             return "abc123456789"
+
     monkeypatch.setattr(uuid, "uuid4", lambda: MockUUID())
 
     # Capture print calls
     printed_requests = []
+
     def mock_print(*args, **kwargs):
         if args:
             printed_requests.append(args[0])
@@ -94,7 +104,7 @@ def test_sample_stdin_with_all_params(monkeypatch):
         max_tokens=500,
         system="You are helpful",
         temperature=0.7,
-        stop_sequences=["STOP", "END"]
+        stop_sequences=["STOP", "END"],
     )
 
     # Parse the request
@@ -120,20 +130,23 @@ def test_sample_stdin_waits_for_matching_id(monkeypatch):
     responses = [
         '{"type": "sample_response", "id": "wrong1", "content": "Wrong"}\n',
         '{"type": "other_message", "data": "ignore"}\n',
-        '{"type": "sample_response", "id": "correct1", "content": "Correct response"}\n'
+        '{"type": "sample_response", "id": "correct1", "content": "Correct response"}\n',
     ]
-    fake_stdin = StringIO(''.join(responses))
+    fake_stdin = StringIO("".join(responses))
     monkeypatch.setattr(sys, "stdin", fake_stdin)
 
     # Mock uuid - first 8 chars will be "correct1"
     import uuid
+
     class MockUUID:
         def __str__(self):
             return "correct12345"
+
     monkeypatch.setattr(uuid, "uuid4", lambda: MockUUID())
 
     # Mock print to suppress output
     printed_requests = []
+
     def mock_print(*args, **kwargs):
         if args:
             printed_requests.append(args[0])
@@ -152,7 +165,7 @@ def test_sample_stdin_closed_error(monkeypatch):
     configure_sampling("stdin")
 
     # Mock stdin that returns empty (closed)
-    fake_stdin = StringIO('')
+    fake_stdin = StringIO("")
     monkeypatch.setattr(sys, "stdin", fake_stdin)
 
     # Should raise RuntimeError

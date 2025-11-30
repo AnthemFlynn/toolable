@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 """Slow tool that times out during discovery."""
+
 import sys
 import time
 

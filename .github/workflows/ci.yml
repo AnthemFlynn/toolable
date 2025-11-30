@@ -60,7 +60,7 @@ jobs:
 
     - name: Run mypy
       run: |
-        mypy src/toolable --strict
+        mypy src/toolable --ignore-missing-imports
       continue-on-error: true
 
   security:

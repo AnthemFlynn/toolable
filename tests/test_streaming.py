@@ -34,7 +34,11 @@ def test_stream_event_log():
 def test_stream_event_artifact():
     """Test StreamEvent.artifact()."""
     event = StreamEvent.artifact("output.txt", "file:///tmp/output.txt")
-    assert event == {"type": "artifact", "name": "output.txt", "uri": "file:///tmp/output.txt"}
+    assert event == {
+        "type": "artifact",
+        "name": "output.txt",
+        "uri": "file:///tmp/output.txt",
+    }
 
 
 def test_stream_event_result():
@@ -48,6 +52,7 @@ def test_stream_event_result():
 
 def test_run_streaming_tool(capsys):
     """Test run_streaming_tool()."""
+
     def my_generator():
         yield StreamEvent.progress("Step 1")
         yield StreamEvent.progress("Step 2")
@@ -67,6 +72,7 @@ def test_run_streaming_tool(capsys):
 
 def test_run_streaming_tool_no_result(capsys):
     """Test run_streaming_tool() with no result event."""
+
     def my_generator():
         yield StreamEvent.progress("Working...")
         yield StreamEvent.log("Done")

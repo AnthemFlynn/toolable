@@ -1,16 +1,21 @@
 #!/usr/bin/env python
 """Test tool with resource for registry tests."""
+
 import json
 import sys
 
 if "--discover" in sys.argv:
-    print(json.dumps({
-        "name": "tool_with_resource",
-        "version": "1.0.0",
-        "tools": [],
-        "resources": [{"uri_pattern": "/files/{id}", "summary": "Get file"}],
-        "prompts": []
-    }))
+    print(
+        json.dumps(
+            {
+                "name": "tool_with_resource",
+                "version": "1.0.0",
+                "tools": [],
+                "resources": [{"uri_pattern": "/files/{id}", "summary": "Get file"}],
+                "prompts": [],
+            }
+        )
+    )
     sys.exit(0)
 
 if "--resource" in sys.argv:

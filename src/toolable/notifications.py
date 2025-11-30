@@ -19,20 +19,24 @@ class _Notify:
         self._emit(event)
 
     def log(self, message: str, level: str = "info") -> None:
-        self._emit({
-            "type": "notification",
-            "kind": "log",
-            "level": level,
-            "message": message,
-        })
+        self._emit(
+            {
+                "type": "notification",
+                "kind": "log",
+                "level": level,
+                "message": message,
+            }
+        )
 
     def artifact(self, name: str, uri: str) -> None:
-        self._emit({
-            "type": "notification",
-            "kind": "artifact",
-            "name": name,
-            "uri": uri,
-        })
+        self._emit(
+            {
+                "type": "notification",
+                "kind": "artifact",
+                "name": name,
+                "uri": uri,
+            }
+        )
 
 
 # Singleton instance

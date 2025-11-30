@@ -1,16 +1,27 @@
 #!/usr/bin/env python
 """Test tool with prompt for registry tests."""
+
 import json
 import sys
 
 if "--discover" in sys.argv:
-    print(json.dumps({
-        "name": "tool_with_prompt",
-        "version": "1.0.0",
-        "tools": [],
-        "resources": [],
-        "prompts": [{"name": "greet", "summary": "Greeting prompt", "arguments": {"name": "Name"}}]
-    }))
+    print(
+        json.dumps(
+            {
+                "name": "tool_with_prompt",
+                "version": "1.0.0",
+                "tools": [],
+                "resources": [],
+                "prompts": [
+                    {
+                        "name": "greet",
+                        "summary": "Greeting prompt",
+                        "arguments": {"name": "Name"},
+                    }
+                ],
+            }
+        )
+    )
     sys.exit(0)
 
 if "--prompt" in sys.argv:

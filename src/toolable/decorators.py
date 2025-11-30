@@ -18,6 +18,7 @@ def toolable(
     session_mode: bool = False,
 ):
     """Decorator to mark a function as an agent-callable tool."""
+
     def decorator(fn: Callable) -> Callable:
         _TOOL_REGISTRY[fn] = {
             "summary": summary,
@@ -47,6 +48,7 @@ def resource(
     tags: list[str] | None = None,
 ):
     """Decorator to mark a function as a resource provider."""
+
     def decorator(fn: Callable) -> Callable:
         _RESOURCE_REGISTRY[fn] = {
             "uri_pattern": uri_pattern,
@@ -72,6 +74,7 @@ def prompt(
     tags: list[str] | None = None,
 ):
     """Decorator to mark a function as a prompt template."""
+
     def decorator(fn: Callable) -> Callable:
         _PROMPT_REGISTRY[fn] = {
             "summary": summary,

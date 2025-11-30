@@ -26,10 +26,15 @@ from toolable.streaming import run_streaming_tool
 
 def _setup_timeout(timeout_seconds: int):
     """Setup timeout handling (cross-platform)."""
-    if platform.system() == 'Windows':
+    if platform.system() == "Windows":
         # On Windows, use threading.Timer
         def timeout_handler():
-            print(json.dumps(Response.error("TIMEOUT", "Operation timed out", recoverable=False)), file=sys.stderr)
+            print(
+                json.dumps(
+                    Response.error("TIMEOUT", "Operation timed out", recoverable=False)
+                ),
+                file=sys.stderr,
+            )
             os._exit(1)
 
         timer = threading.Timer(timeout_seconds, timeout_handler)
@@ -131,7 +136,13 @@ class AgentCLI:
                 cmd = list(self._tools.keys())[0]
                 tool_args = args
             else:
-                print(json.dumps(Response.error("NOT_FOUND", f"Unknown command: {cmd}", recoverable=True)))
+                print(
+                    json.dumps(
+                        Response.error(
+                            "NOT_FOUND", f"Unknown command: {cmd}", recoverable=True
+                        )
+                    )
+                )
                 return
         else:
             tool_args = args[1:]
@@ -182,18 +193,16 @@ class AgentCLI:
         try:
             params = self._parse_input(fn, meta, args, json_input)
         except ValidationError as e:
-            print(json.dumps(Response.error(
-                "INVALID_INPUT",
-                str(e),
-                recoverable=True
-            )))
+            print(json.dumps(Response.error("INVALID_INPUT", str(e), recoverable=True)))
             return
         except json.JSONDecodeError as e:
-            print(json.dumps(Response.error(
-                "INVALID_INPUT",
-                f"Invalid JSON: {e}",
-                recoverable=True
-            )))
+            print(
+                json.dumps(
+                    Response.error(
+                        "INVALID_INPUT", f"Invalid JSON: {e}", recoverable=True
+                    )
+                )
+            )
             return
 
         # Handle reserved fields
@@ -215,7 +224,7 @@ class AgentCLI:
                         raise ToolError(
                             ErrorCode.INVALID_PATH,
                             f"Directory not found: {input_obj.working_dir}",
-                            recoverable=True
+                            recoverable=True,
                         )
                     os.chdir(input_obj.working_dir)
             except ToolError as e:
@@ -229,13 +238,13 @@ class AgentCLI:
                         raise ToolError(
                             ErrorCode.INVALID_INPUT,
                             "timeout must be positive",
-                            recoverable=True
+                            recoverable=True,
                         )
                     if input_obj.timeout > 600:  # 10 minutes max
                         raise ToolError(
                             ErrorCode.INVALID_INPUT,
                             "timeout exceeds maximum (600 seconds)",
-                            recoverable=True
+                            recoverable=True,
                         )
                     timeout_timer = _setup_timeout(input_obj.timeout)
             except ToolError as e:
@@ -244,10 +253,13 @@ class AgentCLI:
 
             # Handle dry_run
             if hasattr(input_obj, "dry_run") and input_obj.dry_run:
-                print(json.dumps(Response.success({
-                    "dry_run": True,
-                    "would_execute": input_obj.to_log_safe()
-                })))
+                print(
+                    json.dumps(
+                        Response.success(
+                            {"dry_run": True, "would_execute": input_obj.to_log_safe()}
+                        )
+                    )
+                )
                 return
 
         # Execute tool
@@ -267,7 +279,7 @@ class AgentCLI:
                         ErrorCode.INVALID_INPUT,
                         "This tool requires --stream flag",
                         suggestion="Add --stream to the command",
-                        recoverable=True
+                        recoverable=True,
                     )
                 run_streaming_tool(result)
             elif meta.get("session_mode"):
@@ -276,7 +288,7 @@ class AgentCLI:
                         ErrorCode.INVALID_INPUT,
                         "This tool requires --session flag",
                         suggestion="Add --session to the command",
-                        recoverable=True
+                        recoverable=True,
                     )
                 final = run_session_tool(result)
                 print(json.dumps(final))
@@ -292,20 +304,18 @@ class AgentCLI:
         except ToolError as e:
             print(json.dumps(e.to_response()))
         except Exception as e:
-            print(json.dumps(Response.error(
-                "INTERNAL",
-                str(e),
-                recoverable=False
-            )))
+            print(json.dumps(Response.error("INTERNAL", str(e), recoverable=False)))
         finally:
             # Cleanup timeout timer on Windows
-            if timeout_timer and platform.system() == 'Windows':
+            if timeout_timer and platform.system() == "Windows":
                 timeout_timer.cancel()
             # Cancel alarm on Unix
-            elif platform.system() != 'Windows':
+            elif platform.system() != "Windows":
                 signal.alarm(0)
 
-    def _parse_input(self, fn: Callable, meta: dict, args: list[str], json_input: str | None) -> Any:
+    def _parse_input(
+        self, fn: Callable, meta: dict, args: list[str], json_input: str | None
+    ) -> Any:
         """Parse input from JSON or CLI flags."""
         input_model = meta.get("input_model")
 
@@ -320,7 +330,14 @@ class AgentCLI:
         i = 0
         while i < len(args):
             arg = args[i]
-            if arg.startswith("--") and arg not in ("--stream", "--session", "--sample-via", "--manifest", "--help", "--validate"):
+            if arg.startswith("--") and arg not in (
+                "--stream",
+                "--session",
+                "--sample-via",
+                "--manifest",
+                "--help",
+                "--validate",
+            ):
                 key = arg[2:].replace("-", "_")
                 if i + 1 < len(args) and not args[i + 1].startswith("--"):
                     value = args[i + 1]
@@ -354,7 +371,10 @@ class AgentCLI:
         except ValidationError as e:
             return {"valid": False, "errors": e.errors()}
         except ToolError as e:
-            return {"valid": False, "errors": [{"code": e.code.value, "message": e.message}]}
+            return {
+                "valid": False,
+                "errors": [{"code": e.code.value, "message": e.message}],
+            }
         except Exception as e:
             return {"valid": False, "errors": [{"message": str(e)}]}
 
@@ -370,12 +390,14 @@ class AgentCLI:
 
         for name, fn in self._tools.items():
             meta = get_tool_meta(fn) or {"summary": ""}
-            output["tools"].append({
-                "name": name,
-                "summary": meta.get("summary", ""),
-                "streaming": meta.get("streaming", False),
-                "session_mode": meta.get("session_mode", False),
-            })
+            output["tools"].append(
+                {
+                    "name": name,
+                    "summary": meta.get("summary", ""),
+                    "streaming": meta.get("streaming", False),
+                    "session_mode": meta.get("session_mode", False),
+                }
+            )
 
         for _pattern, fn in self._resources.items():
             meta = get_resource_meta(fn) or {}
@@ -437,12 +459,24 @@ class AgentCLI:
                     print(json.dumps(Response.error("INTERNAL", str(e))))
                 return
 
-        print(json.dumps(Response.error("NOT_FOUND", f"No resource matches URI: {uri}", recoverable=True)))
+        print(
+            json.dumps(
+                Response.error(
+                    "NOT_FOUND", f"No resource matches URI: {uri}", recoverable=True
+                )
+            )
+        )
 
     def _render_prompt(self, name: str, json_args: str) -> None:
         """Render a prompt."""
         if name not in self._prompts:
-            print(json.dumps(Response.error("NOT_FOUND", f"Unknown prompt: {name}", recoverable=True)))
+            print(
+                json.dumps(
+                    Response.error(
+                        "NOT_FOUND", f"Unknown prompt: {name}", recoverable=True
+                    )
+                )
+            )
             return
 
         try:
@@ -458,7 +492,9 @@ class AgentCLI:
         print(f"{self.name} v{self.version}")
         print()
         print("Usage:")
-        print(f"  {self.name} --discover              Show all tools, resources, prompts")
+        print(
+            f"  {self.name} --discover              Show all tools, resources, prompts"
+        )
         print(f"  {self.name} <command> --manifest    Show command schema")
         print(f"  {self.name} <command> '{{}}'          Execute with JSON input")
         print(f"  {self.name} <command> --flag value  Execute with CLI flags")
@@ -486,4 +522,6 @@ class AgentCLI:
                 req = "*" if name in required else " "
                 default = f" (default: {prop['default']})" if "default" in prop else ""
                 desc = prop.get("description", "")
-                print(f"  {req} --{name:15} {prop.get('type', 'string'):10} {desc}{default}")
+                print(
+                    f"  {req} --{name:15} {prop.get('type', 'string'):10} {desc}{default}"
+                )

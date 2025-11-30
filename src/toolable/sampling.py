@@ -59,7 +59,10 @@ def _sample_via_stdin(request: dict, request_id: str) -> str:
             raise RuntimeError("stdin closed while waiting for sample response")
 
         response = json.loads(line.strip())
-        if response.get("type") == "sample_response" and response.get("id") == request_id:
+        if (
+            response.get("type") == "sample_response"
+            and response.get("id") == request_id
+        ):
             return response.get("content", "")
 
 

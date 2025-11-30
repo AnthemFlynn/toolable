@@ -6,6 +6,7 @@ from toolable.decorators import resource, toolable
 
 def test_resource_uri_escaping():
     """Test that resource URI patterns properly escape literal characters."""
+
     @resource(uri_pattern="/files/{id}.json", summary="Get JSON file")
     def get_json_file(id: str):
         return {"id": id, "content": "data"}
@@ -31,6 +32,7 @@ def test_resource_uri_escaping():
 
 def test_resource_uri_anchoring():
     """Test that resource URI patterns require exact matches."""
+
     @resource(uri_pattern="/files/{id}", summary="Get file")
     def get_file(id: str):
         return {"id": id}
@@ -66,6 +68,7 @@ def test_streaming_mode_required_flag(monkeypatch, capsys):
 
     captured = capsys.readouterr()
     import json
+
     response = json.loads(captured.out)
 
     assert response["status"] == "error"
@@ -90,6 +93,7 @@ def test_session_mode_required_flag(monkeypatch, capsys):
 
     captured = capsys.readouterr()
     import json
+
     response = json.loads(captured.out)
 
     assert response["status"] == "error"
@@ -138,7 +142,9 @@ def test_resource_uri_with_multiple_placeholders(monkeypatch, capsys):
     cli = AgentCLI("test")
     cli.register_resource(get_user_file)
 
-    monkeypatch.setattr(sys, "argv", ["test", "--resource", "/users/alice/files/doc.txt"])
+    monkeypatch.setattr(
+        sys, "argv", ["test", "--resource", "/users/alice/files/doc.txt"]
+    )
     cli.run()
 
     captured = capsys.readouterr()

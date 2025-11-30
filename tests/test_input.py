@@ -7,6 +7,7 @@ from toolable.input import ToolInput
 
 def test_tool_input_basic():
     """Test basic ToolInput functionality."""
+
     class MyInput(ToolInput):
         name: str
         count: int = 5
@@ -18,6 +19,7 @@ def test_tool_input_basic():
 
 def test_tool_input_forbid_extra():
     """Test that extra fields are forbidden."""
+
     class MyInput(ToolInput):
         name: str
 
@@ -27,6 +29,7 @@ def test_tool_input_forbid_extra():
 
 def test_tool_input_context():
     """Test context() method."""
+
     class MyInput(ToolInput):
         name: str
 
@@ -39,6 +42,7 @@ def test_tool_input_context():
 
 def test_tool_input_pre_validate():
     """Test pre_validate() hook."""
+
     class MyInput(ToolInput):
         email: str
 
@@ -47,7 +51,7 @@ def test_tool_input_pre_validate():
                 raise ToolError(
                     "INVALID_INPUT",
                     "Email must contain @",
-                    suggestion="Use format: user@example.com"
+                    suggestion="Use format: user@example.com",
                 )
 
     input_obj = MyInput(email="user@example.com")
@@ -61,6 +65,7 @@ def test_tool_input_pre_validate():
 
 def test_tool_input_to_log_safe():
     """Test to_log_safe() method."""
+
     class MyInput(ToolInput):
         username: str
         password: str
@@ -78,6 +83,7 @@ def test_tool_input_to_log_safe():
 
 def test_tool_input_reserved_fields():
     """Test reserved field names."""
+
     class MyInput(ToolInput):
         name: str
         working_dir: str | None = None
@@ -86,11 +92,7 @@ def test_tool_input_reserved_fields():
         verbose: bool = False
 
     input_obj = MyInput(
-        name="test",
-        working_dir="/tmp",
-        timeout=30,
-        dry_run=True,
-        verbose=True
+        name="test", working_dir="/tmp", timeout=30, dry_run=True, verbose=True
     )
     assert input_obj.working_dir == "/tmp"
     assert input_obj.timeout == 30
@@ -100,6 +102,7 @@ def test_tool_input_reserved_fields():
 
 def test_tool_input_with_field_metadata():
     """Test ToolInput with Field() metadata."""
+
     class MyInput(ToolInput):
         name: str = Field(description="User name")
         age: int = Field(default=0, description="User age")

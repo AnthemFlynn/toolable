@@ -42,7 +42,10 @@ def run_session_tool(gen: session) -> dict:
         return {"status": "success"}
 
     except Exception as e:
-        return {"status": "error", "error": {"code": "INTERNAL", "message": str(e), "recoverable": False}}
+        return {
+            "status": "error",
+            "error": {"code": "INTERNAL", "message": str(e), "recoverable": False},
+        }
 
 
 class SessionEvent:

@@ -48,6 +48,7 @@ class ToolRegistry:
         except (subprocess.TimeoutExpired, json.JSONDecodeError, OSError) as e:
             # Log error but continue loading other tools
             import warnings
+
             warnings.warn(f"Failed to load tool from {path}: {e}", stacklevel=2)
 
     def discover(self) -> dict[str, str]:
@@ -74,7 +75,14 @@ class ToolRegistry:
         """Execute a tool and return response."""
         tool = self.tools.get(name)
         if not tool:
-            return {"status": "error", "error": {"code": "NOT_FOUND", "message": f"Unknown tool: {name}", "recoverable": True}}
+            return {
+                "status": "error",
+                "error": {
+                    "code": "NOT_FOUND",
+                    "message": f"Unknown tool: {name}",
+                    "recoverable": True,
+                },
+            }
 
         path = tool["_path"]
         cmd = [sys.executable, str(path)] if path.suffix == ".py" else [str(path)]
@@ -93,7 +101,7 @@ class ToolRegistry:
                     "code": "INTERNAL",
                     "message": f"Invalid response: {result.stdout}",
                     "recoverable": False,
-                }
+                },
             }
 
     def fetch_resource(self, uri: str) -> dict:
@@ -113,7 +121,9 @@ class ToolRegistry:
             # Use fullmatch to require exact match
             if re.fullmatch(regex_pattern, uri):
                 path = info["_path"]
-                cmd = [sys.executable, str(path)] if path.suffix == ".py" else [str(path)]
+                cmd = (
+                    [sys.executable, str(path)] if path.suffix == ".py" else [str(path)]
+                )
                 result = subprocess.run(
                     cmd + ["--resource", uri],
                     capture_output=True,
@@ -121,13 +131,27 @@ class ToolRegistry:
                 )
                 return json.loads(result.stdout)
 
-        return {"status": "error", "error": {"code": "NOT_FOUND", "message": f"No resource matches: {uri}", "recoverable": True}}
+        return {
+            "status": "error",
+            "error": {
+                "code": "NOT_FOUND",
+                "message": f"No resource matches: {uri}",
+                "recoverable": True,
+            },
+        }
 
     def render_prompt(self, name: str, args: dict) -> dict:
         """Render a prompt."""
         prompt = self.prompts.get(name)
         if not prompt:
-            return {"status": "error", "error": {"code": "NOT_FOUND", "message": f"Unknown prompt: {name}", "recoverable": True}}
+            return {
+                "status": "error",
+                "error": {
+                    "code": "NOT_FOUND",
+                    "message": f"Unknown prompt: {name}",
+                    "recoverable": True,
+                },
+            }
 
         path = prompt["_path"]
         cmd = [sys.executable, str(path)] if path.suffix == ".py" else [str(path)]
