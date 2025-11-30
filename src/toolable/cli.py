@@ -208,30 +208,38 @@ class AgentCLI:
                 return
 
             # Handle working_dir
-            if hasattr(input_obj, "working_dir") and input_obj.working_dir:
-                if not os.path.isdir(input_obj.working_dir):
-                    raise ToolError(
-                        ErrorCode.INVALID_PATH,
-                        f"Directory not found: {input_obj.working_dir}",
-                        recoverable=True
-                    )
-                os.chdir(input_obj.working_dir)
+            try:
+                if hasattr(input_obj, "working_dir") and input_obj.working_dir:
+                    if not os.path.isdir(input_obj.working_dir):
+                        raise ToolError(
+                            ErrorCode.INVALID_PATH,
+                            f"Directory not found: {input_obj.working_dir}",
+                            recoverable=True
+                        )
+                    os.chdir(input_obj.working_dir)
+            except ToolError as e:
+                print(json.dumps(e.to_response()))
+                return
 
             # Handle timeout
-            if hasattr(input_obj, "timeout") and input_obj.timeout:
-                if input_obj.timeout <= 0:
-                    raise ToolError(
-                        ErrorCode.INVALID_INPUT,
-                        "timeout must be positive",
-                        recoverable=True
-                    )
-                if input_obj.timeout > 600:  # 10 minutes max
-                    raise ToolError(
-                        ErrorCode.INVALID_INPUT,
-                        "timeout exceeds maximum (600 seconds)",
-                        recoverable=True
-                    )
-                timeout_timer = _setup_timeout(input_obj.timeout)
+            try:
+                if hasattr(input_obj, "timeout") and input_obj.timeout:
+                    if input_obj.timeout <= 0:
+                        raise ToolError(
+                            ErrorCode.INVALID_INPUT,
+                            "timeout must be positive",
+                            recoverable=True
+                        )
+                    if input_obj.timeout > 600:  # 10 minutes max
+                        raise ToolError(
+                            ErrorCode.INVALID_INPUT,
+                            "timeout exceeds maximum (600 seconds)",
+                            recoverable=True
+                        )
+                    timeout_timer = _setup_timeout(input_obj.timeout)
+            except ToolError as e:
+                print(json.dumps(e.to_response()))
+                return
 
             # Handle dry_run
             if hasattr(input_obj, "dry_run") and input_obj.dry_run:

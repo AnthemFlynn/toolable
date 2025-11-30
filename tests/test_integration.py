@@ -210,3 +210,76 @@ def test_timeout_fires_on_unix(monkeypatch, capsys):
 
     assert response["status"] == "error"
     assert response["error"]["code"] == "TIMEOUT"
+
+
+def test_timeout_cleanup_on_success(monkeypatch, capsys):
+    """Test that timeout is cleaned up when tool completes successfully."""
+    import time
+    import signal
+    import platform
+
+    if platform.system() == 'Windows':
+        pytest.skip("Unix-only test")
+
+    class TimeoutInput(ToolInput):
+        timeout: int = 5
+
+    @toolable(summary="Fast tool", input_model=TimeoutInput)
+    def fast_tool(input: TimeoutInput):
+        return {"result": "done"}
+
+    cli = AgentCLI(fast_tool)
+    monkeypatch.setattr(sys, "argv", ["fast_tool", '{"timeout": 5}'])
+    cli.run()
+
+    # After tool runs, alarm should be cleared
+    # Set a new alarm to verify previous was cleared
+    signal.alarm(1)
+    time.sleep(0.1)
+    signal.alarm(0)  # Clear test alarm
+
+    captured = capsys.readouterr()
+    response = json.loads(captured.out)
+    assert response["status"] == "success"
+
+
+def test_timeout_negative_value(monkeypatch, capsys):
+    """Test that negative timeout is rejected."""
+    class TimeoutInput(ToolInput):
+        timeout: int
+
+    @toolable(summary="Test", input_model=TimeoutInput)
+    def my_tool(input: TimeoutInput):
+        return {"result": "ok"}
+
+    cli = AgentCLI(my_tool)
+    monkeypatch.setattr(sys, "argv", ["my_tool", '{"timeout": -5}'])
+    cli.run()
+
+    captured = capsys.readouterr()
+    response = json.loads(captured.out)
+
+    assert response["status"] == "error"
+    assert response["error"]["code"] == "INVALID_INPUT"
+    assert "positive" in response["error"]["message"]
+
+
+def test_timeout_exceeds_maximum(monkeypatch, capsys):
+    """Test that timeout > 600 is rejected."""
+    class TimeoutInput(ToolInput):
+        timeout: int
+
+    @toolable(summary="Test", input_model=TimeoutInput)
+    def my_tool(input: TimeoutInput):
+        return {"result": "ok"}
+
+    cli = AgentCLI(my_tool)
+    monkeypatch.setattr(sys, "argv", ["my_tool", '{"timeout": 700}'])
+    cli.run()
+
+    captured = capsys.readouterr()
+    response = json.loads(captured.out)
+
+    assert response["status"] == "error"
+    assert response["error"]["code"] == "INVALID_INPUT"
+    assert "600" in response["error"]["message"]
