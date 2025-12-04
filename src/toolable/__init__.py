@@ -2,8 +2,8 @@
 
 __version__ = "0.2.0"
 
-# Import Typer's main class
-from toolable.main import Typer
+# Import main class (renamed from Typer)
+from toolable.main import Toolable
 
 # Keep our response/error system
 from toolable.errors import ErrorCode, ToolError
@@ -18,9 +18,9 @@ from toolable.params import Argument, Option
 from toolable.models import FileText, FileTextWrite, FileBinaryRead, FileBinaryWrite
 
 __all__ = [
-    # Main class (still called Typer for now)
-    "Typer",
-    # Typer utilities
+    # Main class
+    "Toolable",
+    # Utilities
     "Argument",
     "Option",
     "FileText",

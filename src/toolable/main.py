@@ -112,7 +112,7 @@ def get_install_completion_arguments() -> Tuple[click.Parameter, click.Parameter
     return click_install_param, click_show_param
 
 
-class Typer:
+class Toolable:
     def __init__(
         self,
         *,
@@ -260,7 +260,7 @@ class Typer:
 
     def add_typer(
         self,
-        typer_instance: "Typer",
+        toolable_instance: "Toolable",
         *,
         name: Optional[str] = Default(None),
         cls: Optional[Type[TyperGroup]] = Default(None),
@@ -284,7 +284,7 @@ class Typer:
     ) -> None:
         self.registered_groups.append(
             TyperInfo(
-                typer_instance,
+                toolable_instance,
                 name=name,
                 cls=cls,
                 invoke_without_command=invoke_without_command,
@@ -329,51 +329,51 @@ class Typer:
             raise e
 
 
-def get_group(typer_instance: Typer) -> TyperGroup:
+def get_group(toolable_instance: Toolable) -> TyperGroup:
     group = get_group_from_info(
-        TyperInfo(typer_instance),
-        pretty_exceptions_short=typer_instance.pretty_exceptions_short,
-        rich_markup_mode=typer_instance.rich_markup_mode,
-        suggest_commands=typer_instance.suggest_commands,
+        TyperInfo(toolable_instance),
+        pretty_exceptions_short=toolable_instance.pretty_exceptions_short,
+        rich_markup_mode=toolable_instance.rich_markup_mode,
+        suggest_commands=toolable_instance.suggest_commands,
     )
     return group
 
 
-def get_command(typer_instance: Typer) -> click.Command:
-    if typer_instance._add_completion:
+def get_command(toolable_instance: Toolable) -> click.Command:
+    if toolable_instance._add_completion:
         click_install_param, click_show_param = get_install_completion_arguments()
     if (
-        typer_instance.registered_callback
-        or typer_instance.info.callback
-        or typer_instance.registered_groups
-        or len(typer_instance.registered_commands) > 1
+        toolable_instance.registered_callback
+        or toolable_instance.info.callback
+        or toolable_instance.registered_groups
+        or len(toolable_instance.registered_commands) > 1
     ):
         # Create a Group
-        click_command: click.Command = get_group(typer_instance)
-        if typer_instance._add_completion:
+        click_command: click.Command = get_group(toolable_instance)
+        if toolable_instance._add_completion:
             click_command.params.append(click_install_param)
             click_command.params.append(click_show_param)
         return click_command
-    elif len(typer_instance.registered_commands) == 1:
+    elif len(toolable_instance.registered_commands) == 1:
         # Create a single Command
-        single_command = typer_instance.registered_commands[0]
+        single_command = toolable_instance.registered_commands[0]
 
         if not single_command.context_settings and not isinstance(
-            typer_instance.info.context_settings, DefaultPlaceholder
+            toolable_instance.info.context_settings, DefaultPlaceholder
         ):
-            single_command.context_settings = typer_instance.info.context_settings
+            single_command.context_settings = toolable_instance.info.context_settings
 
         click_command = get_command_from_info(
             single_command,
-            pretty_exceptions_short=typer_instance.pretty_exceptions_short,
-            rich_markup_mode=typer_instance.rich_markup_mode,
+            pretty_exceptions_short=toolable_instance.pretty_exceptions_short,
+            rich_markup_mode=toolable_instance.rich_markup_mode,
         )
-        if typer_instance._add_completion:
+        if toolable_instance._add_completion:
             click_command.params.append(click_install_param)
             click_command.params.append(click_show_param)
         return click_command
     raise RuntimeError(
-        "Could not get a command for this Typer instance"
+        "Could not get a command for this Toolable instance"
     )  # pragma: no cover
 
 
@@ -383,14 +383,14 @@ def solve_typer_info_help(typer_info: TyperInfo) -> str:
         return inspect.cleandoc(typer_info.help or "")
     # Priority 2: Explicit value was set in sub_app.callback()
     try:
-        callback_help = typer_info.typer_instance.registered_callback.help
+        callback_help = typer_info.toolable_instance.registered_callback.help
         if not isinstance(callback_help, DefaultPlaceholder):
             return inspect.cleandoc(callback_help or "")
     except AttributeError:
         pass
     # Priority 3: Explicit value was set in sub_app = typer.Typer()
     try:
-        instance_help = typer_info.typer_instance.info.help
+        instance_help = typer_info.toolable_instance.info.help
         if not isinstance(instance_help, DefaultPlaceholder):
             return inspect.cleandoc(instance_help or "")
     except AttributeError:
@@ -402,7 +402,7 @@ def solve_typer_info_help(typer_info: TyperInfo) -> str:
             return doc
     # Priority 5: Implicit inference from callback docstring in @app.callback()
     try:
-        callback = typer_info.typer_instance.registered_callback.callback
+        callback = typer_info.toolable_instance.registered_callback.callback
         if not isinstance(callback, DefaultPlaceholder):
             doc = inspect.getdoc(callback or "")
             if doc:
@@ -411,7 +411,7 @@ def solve_typer_info_help(typer_info: TyperInfo) -> str:
         pass
     # Priority 6: Implicit inference from callback docstring in typer.Typer()
     try:
-        instance_callback = typer_info.typer_instance.info.callback
+        instance_callback = typer_info.toolable_instance.info.callback
         if not isinstance(instance_callback, DefaultPlaceholder):
             doc = inspect.getdoc(instance_callback)
             if doc:
@@ -432,7 +432,7 @@ def solve_typer_info_defaults(typer_info: TyperInfo) -> TyperInfo:
         # Priority 2: Value was set in @subapp.callback()
         try:
             callback_value = getattr(
-                typer_info.typer_instance.registered_callback,  # type: ignore
+                typer_info.toolable_instance.registered_callback,  # type: ignore
                 name,
             )
             if not isinstance(callback_value, DefaultPlaceholder):
@@ -443,7 +443,7 @@ def solve_typer_info_defaults(typer_info: TyperInfo) -> TyperInfo:
         # Priority 3: Value set in subapp = typer.Typer()
         try:
             instance_value = getattr(
-                typer_info.typer_instance.info,  # type: ignore
+                typer_info.toolable_instance.info,  # type: ignore
                 name,
             )
             if not isinstance(instance_value, DefaultPlaceholder):
@@ -464,11 +464,11 @@ def get_group_from_info(
     suggest_commands: bool,
     rich_markup_mode: MarkupMode,
 ) -> TyperGroup:
-    assert group_info.typer_instance, (
-        "A Typer instance is needed to generate a Click Group"
+    assert group_info.toolable_instance, (
+        "A Toolable instance is needed to generate a Click Group"
     )
     commands: Dict[str, click.Command] = {}
-    for command_info in group_info.typer_instance.registered_commands:
+    for command_info in group_info.toolable_instance.registered_commands:
         command = get_command_from_info(
             command_info=command_info,
             pretty_exceptions_short=pretty_exceptions_short,
@@ -476,7 +476,7 @@ def get_group_from_info(
         )
         if command.name:
             commands[command.name] = command
-    for sub_group_info in group_info.typer_instance.registered_groups:
+    for sub_group_info in group_info.toolable_instance.registered_groups:
         sub_group = get_group_from_info(
             sub_group_info,
             pretty_exceptions_short=pretty_exceptions_short,
