@@ -52,6 +52,51 @@ def maybe_update_state(ctx: click.Context) -> None:
         state.func = func_name
 
 
+# Backwards compatibility: AgentCLI from v0.1.x
+class AgentCLI:
+    """DEPRECATED: Use Toolable class instead.
+
+    Provided for backwards compatibility with toolable 0.1.x.
+
+    Migration:
+        Old: cli = AgentCLI(func)
+             cli.run()
+
+        New: app = Toolable()
+             @app.command()
+             def func(): ...
+             app()
+    """
+
+    def __init__(self, name, tools=None, version="0.1.0"):
+        import warnings
+        warnings.warn(
+            "AgentCLI is deprecated. Use Toolable class instead. "
+            "See migration guide for details.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        # Minimal shim - just store for error messages
+        self.name = name if isinstance(name, str) else name.__name__
+        self.tools = tools or []
+        self.version = version
+
+    def run(self):
+        """Raise helpful error about migration."""
+        raise NotImplementedError(
+            f"AgentCLI is no longer supported in toolable 0.2.0.\n\n"
+            f"Please migrate to Toolable:\n\n"
+            f"  from toolable import Toolable\n"
+            f"  app = Toolable()\n\n"
+            f"  @app.command()\n"
+            f"  def my_command():\n"
+            f"      ...\n\n"
+            f"  if __name__ == '__main__':\n"
+            f"      app()\n\n"
+            f"See documentation for migration guide."
+        )
+
+
 class TyperCLIGroup(typer.core.TyperGroup):
     def list_commands(self, ctx: click.Context) -> List[str]:
         self.maybe_add_run(ctx)

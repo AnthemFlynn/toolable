@@ -430,10 +430,12 @@ class Toolable:
 
             prop = {"type": json_type}
 
-            # Check if required (no default)
-            if param.default == inspect.Parameter.empty:
+            # Check if required (no default or Ellipsis)
+            # Typer uses ... (Ellipsis) for required options
+            if param.default == inspect.Parameter.empty or param.default is ...:
                 required.append(param_name)
-            else:
+            elif param.default is not ...:
+                # Only add default if it's not Ellipsis
                 prop["default"] = param.default
 
             properties[param_name] = prop

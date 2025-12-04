@@ -18,7 +18,11 @@ from toolable.params import Argument, Option
 from toolable.models import FileText, FileTextWrite, FileBinaryRead, FileBinaryWrite
 
 # Re-export decorators
-from toolable.decorators import resource, prompt
+from toolable.decorators import resource, prompt, toolable
+
+# Backwards compatibility imports (deprecated in 0.2.0)
+from toolable.input import ToolInput
+from toolable.cli import AgentCLI
 
 __all__ = [
     # Main class
@@ -43,4 +47,8 @@ __all__ = [
     "session",
     "sample",
     "notify",
+    # Backwards compatibility (deprecated)
+    "toolable",
+    "ToolInput",
+    "AgentCLI",
 ]
