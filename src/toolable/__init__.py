@@ -1,32 +1,40 @@
-from toolable.cli import AgentCLI
-from toolable.decorators import prompt, resource, toolable
+"""Toolable, build great CLIs with agent features. Based on Typer."""
+
+__version__ = "0.2.0"
+
+# Import Typer's main class
+from toolable.main import Typer
+
+# Keep our response/error system
 from toolable.errors import ErrorCode, ToolError
-from toolable.input import ToolInput
-from toolable.notifications import notify
-from toolable.registry import ToolRegistry
 from toolable.response import Response
+from toolable.streaming import StreamEvent, stream
+from toolable.session import SessionEvent, session
 from toolable.sampling import sample
-from toolable.session import session
-from toolable.streaming import stream
+from toolable.notifications import notify
+
+# Re-export Typer's utilities
+from toolable.params import Argument, Option
+from toolable.models import FileText, FileTextWrite, FileBinaryRead, FileBinaryWrite
 
 __all__ = [
-    "toolable",
-    "resource",
-    "prompt",
-    "AgentCLI",
-    "ToolInput",
-    "Response",
-    "ToolError",
+    # Main class (still called Typer for now)
+    "Typer",
+    # Typer utilities
+    "Argument",
+    "Option",
+    "FileText",
+    "FileTextWrite",
+    "FileBinaryRead",
+    "FileBinaryWrite",
+    # Our additions
     "ErrorCode",
+    "ToolError",
+    "Response",
+    "StreamEvent",
     "stream",
+    "SessionEvent",
     "session",
-    "notify",
     "sample",
-    "ToolRegistry",
+    "notify",
 ]
-
-__version__ = "0.1.0"
-
-
-def main() -> None:
-    print("Hello from toolable!")
