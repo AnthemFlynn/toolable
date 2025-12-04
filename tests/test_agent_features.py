@@ -117,3 +117,27 @@ def test_discover_includes_resources(monkeypatch, capsys):
 
     assert len(result["resources"]) == 1
     assert result["resources"][0]["uri_pattern"] == "/files/{id}"
+
+
+def test_json_execution_handles_tool_error(monkeypatch, capsys):
+    """Test JSON execution properly handles ToolError."""
+    from toolable.errors import ToolError, ErrorCode
+
+    app = Toolable()
+
+    @app.command()
+    def divide(a: float, b: float):
+        """Divide a by b."""
+        if b == 0:
+            raise ToolError(ErrorCode.INVALID_INPUT, "Cannot divide by zero")
+        return {"result": a / b}
+
+    monkeypatch.setattr(sys, "argv", ["app.py", '{"command": "divide", "params": {"a": 10, "b": 0}}'])
+    app()
+
+    captured = capsys.readouterr()
+    result = json.loads(captured.out)
+
+    assert result["status"] == "error"
+    assert result["error"]["code"] == "INVALID_INPUT"
+    assert "divide by zero" in result["error"]["message"]
