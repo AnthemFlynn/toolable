@@ -2,11 +2,10 @@ import importlib.util
 import re
 import sys
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any
 
 import click
 import typer
-import toolable.core
 from click import Command, Group, Option
 
 from . import __version__
@@ -22,10 +21,10 @@ app.add_typer(utils_app, name="utils")
 
 class State:
     def __init__(self) -> None:
-        self.app: Optional[str] = None
-        self.func: Optional[str] = None
-        self.file: Optional[Path] = None
-        self.module: Optional[str] = None
+        self.app: str | None = None
+        self.func: str | None = None
+        self.file: Path | None = None
+        self.module: str | None = None
 
 
 state = State()
@@ -84,25 +83,25 @@ class AgentCLI:
     def run(self):
         """Raise helpful error about migration."""
         raise NotImplementedError(
-            f"AgentCLI is no longer supported in toolable 0.2.0.\n\n"
-            f"Please migrate to Toolable:\n\n"
-            f"  from toolable import Toolable\n"
-            f"  app = Toolable()\n\n"
-            f"  @app.command()\n"
-            f"  def my_command():\n"
-            f"      ...\n\n"
-            f"  if __name__ == '__main__':\n"
-            f"      app()\n\n"
-            f"See documentation for migration guide."
+            "AgentCLI is no longer supported in toolable 0.2.0.\n\n"
+            "Please migrate to Toolable:\n\n"
+            "  from toolable import Toolable\n"
+            "  app = Toolable()\n\n"
+            "  @app.command()\n"
+            "  def my_command():\n"
+            "      ...\n\n"
+            "  if __name__ == '__main__':\n"
+            "      app()\n\n"
+            "See documentation for migration guide."
         )
 
 
 class TyperCLIGroup(typer.core.TyperGroup):
-    def list_commands(self, ctx: click.Context) -> List[str]:
+    def list_commands(self, ctx: click.Context) -> list[str]:
         self.maybe_add_run(ctx)
         return super().list_commands(ctx)
 
-    def get_command(self, ctx: click.Context, name: str) -> Optional[Command]:
+    def get_command(self, ctx: click.Context, name: str) -> Command | None:
         self.maybe_add_run(ctx)
         return super().get_command(ctx, name)
 
@@ -115,7 +114,7 @@ class TyperCLIGroup(typer.core.TyperGroup):
         maybe_add_run_to_cli(self)
 
 
-def get_typer_from_module(module: Any) -> Optional[typer.Typer]:
+def get_typer_from_module(module: Any) -> typer.Typer | None:
     # Try to get defined app
     if state.app:
         obj = getattr(module, state.app, None)
@@ -163,7 +162,7 @@ def get_typer_from_module(module: Any) -> Optional[typer.Typer]:
     return None
 
 
-def get_typer_from_state() -> Optional[typer.Typer]:
+def get_typer_from_state() -> typer.Typer | None:
     spec = None
     if state.file:
         module_name = state.file.name
@@ -183,16 +182,15 @@ def get_typer_from_state() -> Optional[typer.Typer]:
 
 
 def maybe_add_run_to_cli(cli: click.Group) -> None:
-    if "run" not in cli.commands:
-        if state.file or state.module:
-            obj = get_typer_from_state()
-            if obj:
-                obj._add_completion = False
-                click_obj = typer.main.get_command(obj)
-                click_obj.name = "run"
-                if not click_obj.help:
-                    click_obj.help = "Run the provided Typer app."
-                cli.add_command(click_obj)
+    if "run" not in cli.commands and (state.file or state.module):
+        obj = get_typer_from_state()
+        if obj:
+            obj._add_completion = False
+            click_obj = typer.main.get_command(obj)
+            click_obj.name = "run"
+            if not click_obj.help:
+                click_obj.help = "Run the provided Typer app."
+            cli.add_command(click_obj)
 
 
 def print_version(ctx: click.Context, param: Option, value: bool) -> None:
@@ -235,7 +233,7 @@ def get_docs_for_click(
     indent: int = 0,
     name: str = "",
     call_prefix: str = "",
-    title: Optional[str] = None,
+    title: str | None = None,
 ) -> str:
     docs = "#" * (1 + indent)
     command_name = name or obj.name
@@ -320,13 +318,13 @@ def _parse_html(input_text: str) -> str:
 def docs(
     ctx: typer.Context,
     name: str = typer.Option("", help="The name of the CLI program to use in docs."),
-    output: Optional[Path] = typer.Option(
+    output: Path | None = typer.Option(
         None,
         help="An output file to write docs to, like README.md.",
         file_okay=True,
         dir_okay=False,
     ),
-    title: Optional[str] = typer.Option(
+    title: str | None = typer.Option(
         None,
         help="The title for the documentation page. If not provided, the name of "
         "the program is used.",

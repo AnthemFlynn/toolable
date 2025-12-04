@@ -16,6 +16,12 @@ ignore = [
 
 [lint.per-file-ignores]
 "tests/*" = ["S101"]  # Allow assert in tests
+"src/toolable/main.py" = ["B008"]  # Typer uses Default() in function defaults (intentional pattern)
+"src/toolable/models.py" = ["B008", "N802"]  # Typer patterns (Default, Option as function names)
+"src/toolable/params.py" = ["N802"]  # Typer uses Option/Argument as function names
+"src/toolable/cli.py" = ["B008"]  # Typer CLI patterns
+"src/toolable/completion.py" = ["B008"]  # Typer completion patterns
+"src/toolable/core.py" = ["SIM103"]  # Typer code style
 
 [format]
 line-ending = "auto"

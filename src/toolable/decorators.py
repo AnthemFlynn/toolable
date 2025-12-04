@@ -1,8 +1,8 @@
 """Decorators for resources, prompts, and backwards compatibility shims."""
 
-from functools import wraps
-from typing import Callable, Type
 import warnings
+from collections.abc import Callable
+from functools import wraps
 
 _RESOURCE_REGISTRY: dict[Callable, dict] = {}
 _PROMPT_REGISTRY: dict[Callable, dict] = {}
