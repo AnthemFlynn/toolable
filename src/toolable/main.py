@@ -416,11 +416,64 @@ class Toolable:
 
     def _agent_execute_json(self, json_input: str) -> None:
         """Handle JSON input execution."""
-        # TODO: Implement JSON execution
         import json
         from toolable.response import Response
+        from toolable.errors import ToolError, ErrorCode
 
-        print(json.dumps(Response.error("NOT_IMPLEMENTED", "JSON execution not yet implemented")))
+        try:
+            # Parse JSON input
+            data = json.loads(json_input)
+            command_name = data.get("command")
+            params = data.get("params", {})
+
+            if not command_name:
+                print(json.dumps(Response.error(
+                    "INVALID_INPUT",
+                    "JSON must include 'command' field",
+                    suggestion='Use format: {"command": "name", "params": {...}}'
+                )))
+                return
+
+            # Find command
+            command_info = None
+            for cmd in self.registered_commands:
+                if cmd.name == command_name or cmd.callback.__name__ == command_name:
+                    command_info = cmd
+                    break
+
+            if not command_info:
+                print(json.dumps(Response.error(
+                    "NOT_FOUND",
+                    f"Command '{command_name}' not found",
+                    recoverable=True
+                )))
+                return
+
+            # Execute command with params
+            try:
+                result = command_info.callback(**params)
+
+                # Wrap result in envelope if not already
+                if isinstance(result, dict) and "status" in result:
+                    print(json.dumps(result))
+                else:
+                    print(json.dumps(Response.success(result if isinstance(result, dict) else {"result": result})))
+
+            except ToolError as e:
+                print(json.dumps(e.to_response()))
+            except Exception as e:
+                print(json.dumps(Response.error(
+                    "INTERNAL",
+                    str(e),
+                    recoverable=False
+                )))
+
+        except json.JSONDecodeError as e:
+            print(json.dumps(Response.error(
+                "INVALID_INPUT",
+                f"Invalid JSON: {e}",
+                recoverable=True
+            )))
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         # Check for agent flags BEFORE normal Typer execution

@@ -76,3 +76,24 @@ def test_manifest_returns_command_schema(monkeypatch, capsys):
     assert "files" in result["schema"]["properties"]
     assert "amend" in result["schema"]["properties"]
     assert result["schema"]["properties"]["message"]["type"] == "string"
+
+
+def test_json_input_executes_command(monkeypatch, capsys):
+    """Test JSON input executes command."""
+    app = Toolable()
+
+    @app.command()
+    def add(a: int, b: int):
+        """Add two numbers."""
+        result = a + b
+        # Return dict for agent mode
+        return {"sum": result}
+
+    monkeypatch.setattr(sys, "argv", ["app.py", '{"command": "add", "params": {"a": 5, "b": 3}}'])
+    app()
+
+    captured = capsys.readouterr()
+    result = json.loads(captured.out)
+
+    assert result["status"] == "success"
+    assert result["result"]["sum"] == 8
