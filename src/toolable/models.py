@@ -120,7 +120,7 @@ class CommandInfo:
 class TyperInfo:
     def __init__(
         self,
-        typer_instance: Optional["Typer"] = Default(None),
+        toolable_instance: Optional["Typer"] = Default(None),
         *,
         name: Optional[str] = Default(None),
         cls: Optional[Type["TyperGroup"]] = Default(None),
@@ -142,7 +142,7 @@ class TyperInfo:
         # Rich settings
         rich_help_panel: Union[str, None] = Default(None),
     ):
-        self.typer_instance = typer_instance
+        self.toolable_instance = toolable_instance
         self.name = name
         self.cls = cls
         self.invoke_without_command = invoke_without_command
