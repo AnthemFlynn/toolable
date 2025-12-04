@@ -338,7 +338,10 @@ class Toolable:
         """Handle --discover flag for agent tool discovery."""
         import json
         import inspect
+        from typing import get_type_hints
         from toolable.decorators import get_resource_meta, get_prompt_meta
+        from toolable.streaming import stream
+        from toolable.session import session
 
         tools = []
 
@@ -349,11 +352,15 @@ class Toolable:
             doc = inspect.getdoc(callback) or ""
             summary = doc.split("\n")[0] if doc else ""
 
+            # Detect streaming/session from return type hint
+            type_hints = get_type_hints(callback)
+            return_type = type_hints.get("return", None)
+
             tools.append({
                 "name": command_info.name or callback.__name__,
                 "summary": summary,
-                "streaming": False,  # TODO: detect from decorators
-                "session_mode": False,
+                "streaming": return_type == stream,
+                "session_mode": return_type == session,
             })
 
         # Extract resources
@@ -505,7 +512,25 @@ class Toolable:
             try:
                 result = command_info.callback(**params)
 
-                # Wrap result in envelope if not already
+                # Check if command returns a generator (streaming or session)
+                from typing import get_type_hints
+                from toolable.streaming import stream, run_streaming_tool
+                from toolable.session import session, run_session_tool
+
+                type_hints = get_type_hints(command_info.callback)
+                return_type = type_hints.get("return", None)
+
+                # Detect streaming mode
+                if return_type == stream or (hasattr(result, '__next__') and return_type != session):
+                    run_streaming_tool(result)
+                    return
+
+                # Detect session mode
+                if return_type == session:
+                    run_session_tool(result)
+                    return
+
+                # Normal result - wrap in envelope if not already
                 if isinstance(result, dict) and "status" in result:
                     print(json.dumps(result))
                 else:

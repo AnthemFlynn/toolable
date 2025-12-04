@@ -141,3 +141,65 @@ def test_json_execution_handles_tool_error(monkeypatch, capsys):
     assert result["status"] == "error"
     assert result["error"]["code"] == "INVALID_INPUT"
     assert "divide by zero" in result["error"]["message"]
+
+
+def test_streaming_command_execution(monkeypatch, capsys):
+    """Test streaming command execution with JSON input."""
+    from toolable.streaming import stream, StreamEvent
+
+    app = Toolable()
+
+    @app.command()
+    def process_items(count: int) -> stream:
+        """Process items with streaming progress."""
+        for i in range(count):
+            yield StreamEvent.progress(f"Processing item {i+1}/{count}", percent=int((i+1)/count * 100))
+        yield StreamEvent.result({"status": "success", "result": {"processed": count}})
+
+    monkeypatch.setattr(sys, "argv", ["app.py", '{"command": "process_items", "params": {"count": 3}}'])
+    app()
+
+    captured = capsys.readouterr()
+    lines = [line for line in captured.out.strip().split("\n") if line]
+
+    # Should have progress events + result
+    assert len(lines) == 4
+
+    # Check first progress event
+    event1 = json.loads(lines[0])
+    assert event1["type"] == "progress"
+    assert "Processing item 1/3" in event1["message"]
+
+    # Check final result
+    final = json.loads(lines[-1])
+    assert final["type"] == "result"
+    assert final["result"]["processed"] == 3
+
+
+def test_discover_detects_streaming_mode(monkeypatch, capsys):
+    """Test discovery correctly identifies streaming commands."""
+    from toolable.streaming import stream, StreamEvent
+
+    app = Toolable()
+
+    @app.command()
+    def normal_command():
+        """Normal command."""
+        return {"result": "ok"}
+
+    @app.command()
+    def streaming_command() -> stream:
+        """Streaming command."""
+        yield StreamEvent.result({"done": True})
+
+    monkeypatch.setattr(sys, "argv", ["app.py", "--discover"])
+    app()
+
+    captured = capsys.readouterr()
+    result = json.loads(captured.out)
+
+    normal_tool = next(t for t in result["tools"] if t["name"] == "normal_command")
+    streaming_tool = next(t for t in result["tools"] if t["name"] == "streaming_command")
+
+    assert normal_tool["streaming"] is False
+    assert streaming_tool["streaming"] is True
