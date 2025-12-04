@@ -305,7 +305,53 @@ class Toolable:
             )
         )
 
+    def _agent_discover(self) -> None:
+        """Handle --discover flag for agent tool discovery."""
+        # TODO: Implement discovery
+        import json
+        from toolable.response import Response
+
+        result = {
+            "name": self.info.name or "tool",
+            "version": "0.2.0",
+            "tools": [],
+            "resources": [],
+            "prompts": []
+        }
+        print(json.dumps(result))
+
+    def _agent_manifest(self, command_name: str) -> None:
+        """Handle --manifest flag for command schema."""
+        # TODO: Implement manifest
+        import json
+        from toolable.response import Response
+
+        print(json.dumps({"command": command_name, "schema": {}}))
+
+    def _agent_execute_json(self, json_input: str) -> None:
+        """Handle JSON input execution."""
+        # TODO: Implement JSON execution
+        import json
+        from toolable.response import Response
+
+        print(json.dumps(Response.error("NOT_IMPLEMENTED", "JSON execution not yet implemented")))
+
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        # Check for agent flags BEFORE normal Typer execution
+        if len(sys.argv) > 1:
+            if sys.argv[1] == "--discover":
+                return self._agent_discover()
+
+            # Check if first arg looks like JSON input (starts with {)
+            if sys.argv[1].startswith("{"):
+                return self._agent_execute_json(sys.argv[1])
+
+            # Check for --manifest on specific command
+            if len(sys.argv) > 2 and sys.argv[2] == "--manifest":
+                command_name = sys.argv[1]
+                return self._agent_manifest(command_name)
+
+        # Normal Typer execution unchanged
         if sys.excepthook != except_hook:
             sys.excepthook = except_hook
         try:
