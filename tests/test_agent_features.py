@@ -48,3 +48,31 @@ def test_discover_includes_command_summaries(monkeypatch, capsys):
 
     hello_tool = next(t for t in result["tools"] if t["name"] == "hello")
     assert "Say hello" in hello_tool["summary"]
+
+
+def test_manifest_returns_command_schema(monkeypatch, capsys):
+    """Test --manifest flag returns command schema."""
+    app = Toolable()
+
+    @app.command()
+    def commit(
+        message: str,
+        files: list[str] = None,
+        amend: bool = False,
+    ):
+        """Commit changes to git."""
+        pass
+
+    monkeypatch.setattr(sys, "argv", ["app.py", "commit", "--manifest"])
+    app()
+
+    captured = capsys.readouterr()
+    result = json.loads(captured.out)
+
+    assert result["name"] == "commit"
+    assert "schema" in result
+    assert "properties" in result["schema"]
+    assert "message" in result["schema"]["properties"]
+    assert "files" in result["schema"]["properties"]
+    assert "amend" in result["schema"]["properties"]
+    assert result["schema"]["properties"]["message"]["type"] == "string"

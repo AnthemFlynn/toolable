@@ -338,11 +338,81 @@ class Toolable:
 
     def _agent_manifest(self, command_name: str) -> None:
         """Handle --manifest flag for command schema."""
-        # TODO: Implement manifest
         import json
+        import inspect
+        from typing import get_type_hints
         from toolable.response import Response
 
-        print(json.dumps({"command": command_name, "schema": {}}))
+        # Find the command
+        command_info = None
+        for cmd in self.registered_commands:
+            if cmd.name == command_name or cmd.callback.__name__ == command_name:
+                command_info = cmd
+                break
+
+        if not command_info:
+            print(json.dumps(Response.error("NOT_FOUND", f"Command '{command_name}' not found")))
+            return
+
+        # Extract schema from function signature
+        callback = command_info.callback
+        type_hints = get_type_hints(callback)
+        sig = inspect.signature(callback)
+
+        properties = {}
+        required = []
+
+        for param_name, param in sig.parameters.items():
+            if param_name in ("ctx", "self", "cls"):
+                continue
+
+            param_type = type_hints.get(param_name, str)
+            json_type = self._python_type_to_json(param_type)
+
+            prop = {"type": json_type}
+
+            # Check if required (no default)
+            if param.default == inspect.Parameter.empty:
+                required.append(param_name)
+            else:
+                prop["default"] = param.default
+
+            properties[param_name] = prop
+
+        schema = {
+            "type": "object",
+            "properties": properties,
+        }
+        if required:
+            schema["required"] = required
+
+        result = {
+            "name": command_name,
+            "summary": (inspect.getdoc(callback) or "").split("\n")[0],
+            "description": inspect.getdoc(callback) or "",
+            "schema": schema,
+        }
+
+        print(json.dumps(result, indent=2))
+
+    def _python_type_to_json(self, py_type) -> str:
+        """Map Python types to JSON schema types."""
+        origin = getattr(py_type, "__origin__", None)
+
+        if origin is list:
+            return "array"
+        if origin is dict:
+            return "object"
+
+        mapping = {
+            str: "string",
+            int: "integer",
+            float: "number",
+            bool: "boolean",
+            list: "array",
+            dict: "object",
+        }
+        return mapping.get(py_type, "string")
 
     def _agent_execute_json(self, json_input: str) -> None:
         """Handle JSON input execution."""
