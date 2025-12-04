@@ -170,6 +170,9 @@ class Toolable:
         self.registered_groups: List[TyperInfo] = []
         self.registered_commands: List[CommandInfo] = []
         self.registered_callback: Optional[TyperInfo] = None
+        # Add resource/prompt storage
+        self._resources: dict[str, Callable] = {}
+        self._prompts: dict[str, Callable] = {}
 
     def callback(
         self,
@@ -305,10 +308,37 @@ class Toolable:
             )
         )
 
+    def resource(self, uri_pattern: str, summary: str, mime_types: list[str] | None = None):
+        """Register a resource provider."""
+        from toolable.decorators import resource as resource_decorator
+        return resource_decorator(uri_pattern, summary, mime_types)
+
+    def prompt_template(self, summary: str, arguments: dict[str, str]):
+        """Register a prompt template."""
+        from toolable.decorators import prompt as prompt_decorator
+        return prompt_decorator(summary, arguments)
+
+    def register_resource(self, fn: Callable) -> None:
+        """Register a resource function."""
+        from toolable.decorators import get_resource_meta
+        meta = get_resource_meta(fn)
+        if not meta:
+            raise ValueError(f"{fn.__name__} is not decorated with @resource")
+        self._resources[meta["uri_pattern"]] = fn
+
+    def register_prompt(self, fn: Callable) -> None:
+        """Register a prompt function."""
+        from toolable.decorators import get_prompt_meta
+        meta = get_prompt_meta(fn)
+        if not meta:
+            raise ValueError(f"{fn.__name__} is not decorated with @prompt")
+        self._prompts[fn.__name__] = fn
+
     def _agent_discover(self) -> None:
         """Handle --discover flag for agent tool discovery."""
         import json
         import inspect
+        from toolable.decorators import get_resource_meta, get_prompt_meta
 
         tools = []
 
@@ -326,12 +356,34 @@ class Toolable:
                 "session_mode": False,
             })
 
+        # Extract resources
+        resources = []
+        for uri_pattern, fn in self._resources.items():
+            meta = get_resource_meta(fn)
+            if meta:
+                resources.append({
+                    "uri_pattern": uri_pattern,
+                    "summary": meta["summary"],
+                    "mime_types": meta.get("mime_types", []),
+                })
+
+        # Extract prompts
+        prompts = []
+        for name, fn in self._prompts.items():
+            meta = get_prompt_meta(fn)
+            if meta:
+                prompts.append({
+                    "name": name,
+                    "summary": meta["summary"],
+                    "arguments": meta.get("arguments", {}),
+                })
+
         result = {
             "name": self.info.name or "tool",
             "version": "0.2.0",
             "tools": tools,
-            "resources": [],  # TODO: implement resources
-            "prompts": [],    # TODO: implement prompts
+            "resources": resources,
+            "prompts": prompts,
         }
 
         print(json.dumps(result, indent=2))

@@ -97,3 +97,23 @@ def test_json_input_executes_command(monkeypatch, capsys):
 
     assert result["status"] == "success"
     assert result["result"]["sum"] == 8
+
+
+def test_discover_includes_resources(monkeypatch, capsys):
+    """Test discovery includes resources."""
+    app = Toolable()
+
+    @app.resource(uri_pattern="/files/{id}", summary="Get file")
+    def get_file(id: str):
+        return {"id": id, "content": "..."}
+
+    app.register_resource(get_file)
+
+    monkeypatch.setattr(sys, "argv", ["app.py", "--discover"])
+    app()
+
+    captured = capsys.readouterr()
+    result = json.loads(captured.out)
+
+    assert len(result["resources"]) == 1
+    assert result["resources"][0]["uri_pattern"] == "/files/{id}"

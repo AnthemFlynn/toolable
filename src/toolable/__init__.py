@@ -17,6 +17,9 @@ from toolable.notifications import notify
 from toolable.params import Argument, Option
 from toolable.models import FileText, FileTextWrite, FileBinaryRead, FileBinaryWrite
 
+# Re-export decorators
+from toolable.decorators import resource, prompt
+
 __all__ = [
     # Main class
     "Toolable",
@@ -27,6 +30,9 @@ __all__ = [
     "FileTextWrite",
     "FileBinaryRead",
     "FileBinaryWrite",
+    # Decorators
+    "resource",
+    "prompt",
     # Our additions
     "ErrorCode",
     "ToolError",
