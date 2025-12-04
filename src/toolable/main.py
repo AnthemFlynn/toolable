@@ -307,18 +307,34 @@ class Toolable:
 
     def _agent_discover(self) -> None:
         """Handle --discover flag for agent tool discovery."""
-        # TODO: Implement discovery
         import json
-        from toolable.response import Response
+        import inspect
+
+        tools = []
+
+        # Extract registered commands
+        for command_info in self.registered_commands:
+            # Get docstring for summary
+            callback = command_info.callback
+            doc = inspect.getdoc(callback) or ""
+            summary = doc.split("\n")[0] if doc else ""
+
+            tools.append({
+                "name": command_info.name or callback.__name__,
+                "summary": summary,
+                "streaming": False,  # TODO: detect from decorators
+                "session_mode": False,
+            })
 
         result = {
             "name": self.info.name or "tool",
             "version": "0.2.0",
-            "tools": [],
-            "resources": [],
-            "prompts": []
+            "tools": tools,
+            "resources": [],  # TODO: implement resources
+            "prompts": [],    # TODO: implement prompts
         }
-        print(json.dumps(result))
+
+        print(json.dumps(result, indent=2))
 
     def _agent_manifest(self, command_name: str) -> None:
         """Handle --manifest flag for command schema."""
