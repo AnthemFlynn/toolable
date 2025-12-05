@@ -10,12 +10,13 @@ from click import Command, Group, Option
 
 from . import __version__
 from .core import HAS_RICH
+from .main import Toolable
 
 default_app_names = ("app", "cli", "main")
 default_func_names = ("main", "cli", "app")
 
-app = typer.Typer()
-utils_app = typer.Typer(help="Extra utility commands for Typer apps.")
+app = Toolable()
+utils_app = Toolable(help="Extra utility commands for Toolable apps.")
 app.add_typer(utils_app, name="utils")
 
 
