@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Toolable** is a Python library that makes any CLI executable a full-featured agent tool without requiring a server. It provides decorators, base classes, and a CLI runner for discovery, validation, execution, streaming, sessions, and LLM sampling callbacks.
+**Toolable** is a Python CLI framework for building command-line tools that work seamlessly for both humans and AI agents. It provides discovery, schema generation, structured I/O, streaming, and resource/prompt capabilities without requiring a server process.
 
 ## Development Commands
 
@@ -56,38 +56,45 @@ ruff format src/toolable tests/
 ## Project Status
 
 **Current State:**
-- **Version**: 0.1.0 (pre-release on dev branch)
-- **Test Coverage**: 97% (153 tests)
+- **Version**: 0.2.0 (dev branch)
+- **Test Coverage**: 66 tests passing
 - **Python Support**: 3.10, 3.11, 3.12, 3.13
 - **Platforms**: Linux, macOS, Windows
 - **License**: MIT
 
-**Key Metrics:**
-- 12 core modules (670 lines of code)
-- 8 modules at 100% coverage
-- All tests passing on macOS (CI configured for all platforms)
+**Architecture:**
+- Core: `main.py` (Toolable class with agent features)
+- CLI Integration: `core.py`, `params.py`, `models.py` (Click integration)
+- Agent Features: Discovery, manifest, JSON execution
+- MCP-like: Response envelopes, streaming, sessions, resources, prompts
 
 **Infrastructure:**
 - CI/CD: `.github/workflows/ci.yml` (tests on all platforms/versions)
 - Publishing: `.github/workflows/publish.yml` (automated PyPI releases)
-- Pre-commit: `.pre-commit-config.yaml` (ruff, mypy, security checks)
+- Pre-commit: `.pre-commit-config.yaml` (ruff formatting, security checks)
 - Community: `CONTRIBUTING.md`, `SECURITY.md`, issue/PR templates
 
 ## Important Files for AI Agents
 
-**Development:**
-- `CONTRIBUTING.md` - Full development workflow, not duplicated here
-- `docs/plans/` - Implementation plans and designs
-- `docs/test-coverage-report.md` - Detailed coverage analysis
+**Core Implementation:**
+- `src/toolable/main.py` - Toolable class, agent features
+- `src/toolable/errors.py` - ErrorCode enum, ToolError exception
+- `src/toolable/response.py` - Response envelopes
+- `src/toolable/decorators.py` - @resource, @prompt decorators
+
+**Examples:**
+- `examples/demo_tool.py` - Basic usage
+- `examples/complete_demo.py` - All features showcase
+- `examples/mcp_features_demo.py` - Streaming, resources, prompts
 
 **Testing:**
-- `tests/fixtures/` - Mock tools for registry testing (valid_tool.py, broken_tool.py, etc.)
-- Coverage target: 90% minimum, currently at 97%
+- `tests/test_agent_features.py` - Agent feature tests (discovery, manifest, JSON)
+- Core feature tests: errors, response, streaming, session, notifications, sampling
 
-**Configuration:**
-- `pyproject.toml` - Package metadata, dependencies, build config
-- `ruff.toml` - Linting rules
-- `.pre-commit-config.yaml` - Auto-formatting on commit
+**Documentation:**
+- `docs/MIGRATION.md` - v0.1.x → v0.2.0 migration guide
+- `docs/feature-showcase.md` - Complete feature documentation
+- `NOTICE` - Attribution (Typer foundation acknowledged here only)
 
 ## Architecture
 

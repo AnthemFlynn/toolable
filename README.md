@@ -6,20 +6,20 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI](https://img.shields.io/pypi/v/toolable.svg)](https://pypi.org/project/toolable/)
 
-Build CLIs with Typer's great DX, get MCP-like agent features without running a server.
+Build CLI tools that work for both humans and AI agents.
 
-**Toolable** is a fork of [Typer](https://github.com/fastapi/typer) with built-in agent support. Write CLIs with type hints, get discovery, schemas, and JSON I/O automatically - perfect for local agent workflows.
+**Toolable** is a Python CLI framework with built-in agent support. Write command-line tools with type hints, and automatically get discovery, schemas, and structured I/O - perfect for local agent workflows without server overhead.
 
 ## Features
 
-- **Convention over configuration** - Sensible defaults, explicit overrides
-- **Pydantic-native** - Leverage Field() for automatic schema generation
-- **Dual-mode** - Works for humans (--help, --flags) and agents (--manifest, JSON)
-- **Stateless library, stateful tools** - Library doesn't manage state, tools can
-- **Progressive disclosure** - Discovery > Schema > Execution
-- **Streaming support** - Real-time progress and logs
-- **Bidirectional sessions** - Interactive tool experiences
-- **LLM sampling** - Tools can request LLM completions from the caller
+- **Type-hint based** - Use Python type hints for automatic validation and schema generation
+- **Dual-mode** - Same CLI works for humans (flags) and agents (JSON, discovery)
+- **Progressive disclosure** - Discovery → Schema → Execution pattern
+- **Streaming support** - Real-time progress events with jsonlines
+- **Structured errors** - Error codes, suggestions, recoverability flags
+- **Resources & prompts** - Expose data and templates to agents
+- **Rich output** - Beautiful terminal formatting for humans
+- **Cross-platform** - Works on Linux, macOS, Windows
 
 ## Installation
 
@@ -461,6 +461,10 @@ ruff check src/ tests/   # Check code style
 ## Security
 
 Found a security issue? Please see our [Security Policy](SECURITY.md) for responsible disclosure.
+
+## Credits
+
+Toolable is built on [Typer](https://github.com/fastapi/typer) by Sebastián Ramírez. See [NOTICE](NOTICE) for full attribution.
 
 ## License
 
