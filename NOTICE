@@ -1,0 +1,12 @@
+Toolable
+Copyright (c) 2025 AnthemFlynn
+
+This project is based on Typer:
+  Copyright (c) 2019 Sebastián Ramírez
+  https://github.com/fastapi/typer
+  Licensed under the MIT License
+
+Toolable adds agent-callable features (discovery, schemas, JSON I/O, resources, prompts)
+to Typer's CLI framework. All modifications are also licensed under the MIT License.
+
+The original Typer license is preserved in the LICENSE file.

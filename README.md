@@ -6,9 +6,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI](https://img.shields.io/pypi/v/toolable.svg)](https://pypi.org/project/toolable/)
 
-Make any CLI executable a full-featured agent tool without requiring a server.
+Build CLIs with Typer's great DX, get MCP-like agent features without running a server.
 
-**Toolable** is a Python library that provides decorators, base classes, and a CLI runner to turn your Python functions into agent-callable tools with automatic discovery, validation, execution, streaming, sessions, and LLM sampling callbacks.
+**Toolable** is a fork of [Typer](https://github.com/fastapi/typer) with built-in agent support. Write CLIs with type hints, get discovery, schemas, and JSON I/O automatically - perfect for local agent workflows.
 
 ## Features
 
@@ -32,60 +32,71 @@ pip install toolable
 ### Simple Tool
 
 ```python
-from toolable import toolable, AgentCLI
+from toolable import Toolable
 
-@toolable(summary="Add two numbers")
+app = Toolable()
+
+@app.command()
 def add(a: int, b: int):
     """Add two numbers and return the sum."""
-    return {"sum": a + b}
+    result = a + b
+    return {"sum": result}
 
 if __name__ == "__main__":
-    AgentCLI(add).run()
+    app()
 ```
 
 **Usage:**
 
 ```bash
-# Human-friendly
-python my_tool.py --a 5 --b 3
+# Human CLI (standard Typer behavior)
+python my_tool.py add 5 3
 
-# Agent-friendly
-python my_tool.py '{"a": 5, "b": 3}'
-
-# Discovery
+# Agent discovery
 python my_tool.py --discover
 
-# Get schema
-python my_tool.py --manifest
+# Agent schema
+python my_tool.py add --manifest
+
+# Agent JSON execution
+python my_tool.py '{"command": "add", "params": {"a": 5, "b": 3}}'
+# Returns: {"status": "success", "result": {"sum": 8}}
 ```
 
-### Tool with Input Model
+### Multiple Commands
 
 ```python
-from pydantic import Field
-from toolable import toolable, AgentCLI, ToolInput
+from toolable import Toolable
 
-class GreetInput(ToolInput):
-    name: str = Field(description="Person's name")
-    style: str = Field(default="formal", description="Greeting style: formal or casual")
+app = Toolable()
 
-@toolable(summary="Generate a personalized greeting", input_model=GreetInput)
-def greet(input: GreetInput):
-    """Generate a greeting based on style."""
-    if input.style == "casual":
-        return {"message": f"Hey {input.name}!"}
-    return {"message": f"Good day, {input.name}."}
+@app.command()
+def commit(message: str, amend: bool = False):
+    """Commit changes to git."""
+    cmd = ['git', 'commit', '-m', message]
+    if amend:
+        cmd.append('--amend')
+    subprocess.run(cmd)
+    return {"committed": True, "message": message}
+
+@app.command()
+def status():
+    """Get git status."""
+    result = subprocess.run(['git', 'status', '--short'], capture_output=True, text=True)
+    return {"status": result.stdout}
 
 if __name__ == "__main__":
-    AgentCLI(greet).run()
+    app()
 ```
 
 ### Error Handling
 
 ```python
-from toolable import toolable, AgentCLI, ToolError, ErrorCode
+from toolable import Toolable, ToolError, ErrorCode
 
-@toolable(summary="Divide two numbers")
+app = Toolable()
+
+@app.command()
 def divide(a: float, b: float):
     """Divide a by b."""
     if b == 0:
@@ -98,13 +109,13 @@ def divide(a: float, b: float):
     return {"result": a / b}
 
 if __name__ == "__main__":
-    AgentCLI(divide).run()
+    app()
 ```
 
 ### Streaming Tool
 
 ```python
-from toolable import toolable, AgentCLI, stream
+from toolable import Toolable, stream
 from toolable.streaming import StreamEvent
 
 @toolable(summary="Process items with progress", streaming=True)
@@ -121,7 +132,7 @@ def process_items(items: list[str]) -> stream:
     })
 
 if __name__ == "__main__":
-    AgentCLI(process_items).run()
+    app = Toolable(); app.command()(process_items); app()
 ```
 
 **Usage:**
@@ -133,7 +144,7 @@ python my_tool.py --stream '{"items": ["a", "b", "c"]}'
 ### Session Tool
 
 ```python
-from toolable import toolable, AgentCLI, session
+from toolable import Toolable, session
 from toolable.session import SessionEvent
 
 @toolable(summary="Interactive calculator", session_mode=True)
@@ -159,13 +170,13 @@ def calculator() -> session:
     yield SessionEvent.end()
 
 if __name__ == "__main__":
-    AgentCLI(calculator).run()
+    app = Toolable(); app.command()(calculator); app()
 ```
 
 ### Multiple Tools
 
 ```python
-from toolable import toolable, AgentCLI
+from toolable import Toolable
 
 @toolable(summary="Add two numbers")
 def add(a: int, b: int):
@@ -236,7 +247,7 @@ def create_file(input: MyInput):
     return {"message": f"Created {input.name}"}
 
 if __name__ == "__main__":
-    AgentCLI(create_file).run()
+    app = Toolable(); app.command()(create_file); app()
 ```
 
 ### LLM Sampling
@@ -244,7 +255,7 @@ if __name__ == "__main__":
 Tools can request LLM completions from the caller:
 
 ```python
-from toolable import toolable, AgentCLI, sample
+from toolable import Toolable, sample
 
 @toolable(summary="Generate creative content")
 def generate_story(topic: str):
@@ -254,7 +265,7 @@ def generate_story(topic: str):
     return {"story": story}
 
 if __name__ == "__main__":
-    AgentCLI(generate_story).run()
+    app = Toolable(); app.command()(generate_story); app()
 ```
 
 **Usage:**
@@ -355,7 +366,7 @@ Toolable provides standard error codes:
 Tools can emit progress and logs to stderr without affecting the stdout response:
 
 ```python
-from toolable import toolable, AgentCLI, notify
+from toolable import Toolable, notify
 
 @toolable(summary="Process data")
 def process(data: list):
@@ -370,7 +381,7 @@ def process(data: list):
     return {"processed": len(data)}
 
 if __name__ == "__main__":
-    AgentCLI(process).run()
+    app = Toolable(); app.command()(process); app()
 ```
 
 ## CLI Flags

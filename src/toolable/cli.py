@@ -1,527 +1,353 @@
-import json
-import os
-import platform
-import signal
+import importlib.util
+import re
 import sys
-import threading
-from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
-from pydantic import ValidationError
+import click
+import typer
+from click import Command, Group, Option
 
-from toolable.decorators import get_prompt_meta, get_resource_meta, get_tool_meta
-from toolable.discovery import (
-    extract_schema_from_function,
-    generate_prompt_manifest,
-    generate_resource_manifest,
-    generate_tool_manifest,
-)
-from toolable.errors import ErrorCode, ToolError
-from toolable.input import ToolInput
-from toolable.response import Response
-from toolable.sampling import configure_sampling
-from toolable.session import run_session_tool
-from toolable.streaming import run_streaming_tool
+from . import __version__
+from .core import HAS_RICH
+from .main import Toolable
 
+default_app_names = ("app", "cli", "main")
+default_func_names = ("main", "cli", "app")
 
-def _setup_timeout(timeout_seconds: int):
-    """Setup timeout handling (cross-platform)."""
-    if platform.system() == "Windows":
-        # On Windows, use threading.Timer
-        def timeout_handler():
-            print(
-                json.dumps(
-                    Response.error("TIMEOUT", "Operation timed out", recoverable=False)
-                ),
-                file=sys.stderr,
-            )
-            os._exit(1)
-
-        timer = threading.Timer(timeout_seconds, timeout_handler)
-        timer.daemon = True
-        timer.start()
-        return timer
-    else:
-        # On Unix, use signal.alarm
-        def timeout_handler(signum, frame):
-            raise ToolError(ErrorCode.TIMEOUT, "Operation timed out")
-
-        signal.signal(signal.SIGALRM, timeout_handler)
-        signal.alarm(timeout_seconds)
-        return None
+app = Toolable()
+utils_app = Toolable(help="Extra utility commands for Toolable apps.")
+app.add_typer(utils_app, name="utils")
 
 
-class AgentCLI:
-    def __init__(
-        self,
-        name: str | Callable,
-        tools: list[Callable] | None = None,
-        version: str = "0.1.0",
-    ):
-        # Support single-tool shorthand: AgentCLI(my_func).run()
-        if callable(name):
-            fn = name
-            self.name = fn.__name__
-            self._tools = {fn.__name__: fn}
+class State:
+    def __init__(self) -> None:
+        self.app: str | None = None
+        self.func: str | None = None
+        self.file: Path | None = None
+        self.module: str | None = None
+
+
+state = State()
+
+
+def maybe_update_state(ctx: click.Context) -> None:
+    path_or_module = ctx.params.get("path_or_module")
+    if path_or_module:
+        file_path = Path(path_or_module)
+        if file_path.exists() and file_path.is_file():
+            state.file = file_path
         else:
-            self.name = name
-            self._tools = {}
+            if not re.fullmatch(r"[a-zA-Z_]\w*(\.[a-zA-Z_]\w*)*", path_or_module):
+                typer.echo(
+                    f"Not a valid file or Python module: {path_or_module}", err=True
+                )
+                sys.exit(1)
+            state.module = path_or_module
+    app_name = ctx.params.get("app")
+    if app_name:
+        state.app = app_name
+    func_name = ctx.params.get("func")
+    if func_name:
+        state.func = func_name
 
-        self._resources = {}
-        self._prompts = {}
+
+# Backwards compatibility: AgentCLI from v0.1.x
+class AgentCLI:
+    """DEPRECATED: Use Toolable class instead.
+
+    Provided for backwards compatibility with toolable 0.1.x.
+
+    Migration:
+        Old: cli = AgentCLI(func)
+             cli.run()
+
+        New: app = Toolable()
+             @app.command()
+             def func(): ...
+             app()
+    """
+
+    def __init__(self, name, tools=None, version="0.1.0"):
+        import warnings
+
+        warnings.warn(
+            "AgentCLI is deprecated. Use Toolable class instead. "
+            "See migration guide for details.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        # Minimal shim - just store for error messages
+        self.name = name if isinstance(name, str) else name.__name__
+        self.tools = tools or []
         self.version = version
 
-        # Register initial tools
-        if tools:
-            for tool in tools:
-                self.register(tool)
+    def run(self):
+        """Raise helpful error about migration."""
+        raise NotImplementedError(
+            "AgentCLI is no longer supported in toolable 0.2.0.\n\n"
+            "Please migrate to Toolable:\n\n"
+            "  from toolable import Toolable\n"
+            "  app = Toolable()\n\n"
+            "  @app.command()\n"
+            "  def my_command():\n"
+            "      ...\n\n"
+            "  if __name__ == '__main__':\n"
+            "      app()\n\n"
+            "See documentation for migration guide."
+        )
 
-    def register(self, fn: Callable, name: str | None = None) -> None:
-        """Register a tool."""
-        tool_name = name or fn.__name__
-        self._tools[tool_name] = fn
 
-    def register_resource(self, fn: Callable) -> None:
-        """Register a resource."""
-        meta = get_resource_meta(fn)
-        if not meta:
-            raise ValueError(f"{fn.__name__} is not decorated with @resource")
-        self._resources[meta["uri_pattern"]] = fn
+class TyperCLIGroup(typer.core.TyperGroup):
+    def list_commands(self, ctx: click.Context) -> list[str]:
+        self.maybe_add_run(ctx)
+        return super().list_commands(ctx)
 
-    def register_prompt(self, fn: Callable) -> None:
-        """Register a prompt."""
-        self._prompts[fn.__name__] = fn
+    def get_command(self, ctx: click.Context, name: str) -> Command | None:
+        self.maybe_add_run(ctx)
+        return super().get_command(ctx, name)
 
-    def run(self) -> None:
-        """Execute CLI based on arguments."""
-        args = sys.argv[1:]
+    def invoke(self, ctx: click.Context) -> Any:
+        self.maybe_add_run(ctx)
+        return super().invoke(ctx)
 
-        if not args or "--help" in args and len(args) == 1:
-            self._print_help()
-            return
+    def maybe_add_run(self, ctx: click.Context) -> None:
+        maybe_update_state(ctx)
+        maybe_add_run_to_cli(self)
 
-        # Global flags
-        if "--discover" in args:
-            self._print_discover()
-            return
-        if "--tools" in args:
-            self._print_tools()
-            return
-        if "--resources" in args:
-            self._print_resources()
-            return
-        if "--prompts" in args:
-            self._print_prompts()
-            return
 
-        # Resource fetch
-        if "--resource" in args:
-            idx = args.index("--resource")
-            if idx + 1 < len(args):
-                self._fetch_resource(args[idx + 1])
-            return
+def get_typer_from_module(module: Any) -> typer.Typer | None:
+    # Try to get defined app
+    if state.app:
+        obj = getattr(module, state.app, None)
+        if not isinstance(obj, typer.Typer):
+            typer.echo(f"Not a Typer object: --app {state.app}", err=True)
+            sys.exit(1)
+        return obj
+    # Try to get defined function
+    if state.func:
+        func_obj = getattr(module, state.func, None)
+        if not callable(func_obj):
+            typer.echo(f"Not a function: --func {state.func}", err=True)
+            sys.exit(1)
+        sub_app = typer.Typer()
+        sub_app.command()(func_obj)
+        return sub_app
+    # Iterate and get a default object to use as CLI
+    local_names = dir(module)
+    local_names_set = set(local_names)
+    # Try to get a default Typer app
+    for name in default_app_names:
+        if name in local_names_set:
+            obj = getattr(module, name, None)
+            if isinstance(obj, typer.Typer):
+                return obj
+    # Try to get any Typer app
+    for name in local_names_set - set(default_app_names):
+        obj = getattr(module, name)
+        if isinstance(obj, typer.Typer):
+            return obj
+    # Try to get a default function
+    for func_name in default_func_names:
+        func_obj = getattr(module, func_name, None)
+        if callable(func_obj):
+            sub_app = typer.Typer()
+            sub_app.command()(func_obj)
+            return sub_app
+    # Try to get any func app
+    for func_name in local_names_set - set(default_func_names):
+        func_obj = getattr(module, func_name)
+        if callable(func_obj):
+            sub_app = typer.Typer()
+            sub_app.command()(func_obj)
+            return sub_app
+    return None
 
-        # Prompt render
-        if "--prompt" in args:
-            idx = args.index("--prompt")
-            if idx + 2 < len(args):
-                self._render_prompt(args[idx + 1], args[idx + 2])
-            return
 
-        # Tool execution
-        cmd = args[0]
-        if cmd not in self._tools:
-            # Single tool mode
-            if len(self._tools) == 1:
-                cmd = list(self._tools.keys())[0]
-                tool_args = args
-            else:
-                print(
-                    json.dumps(
-                        Response.error(
-                            "NOT_FOUND", f"Unknown command: {cmd}", recoverable=True
-                        )
-                    )
-                )
-                return
+def get_typer_from_state() -> typer.Typer | None:
+    spec = None
+    if state.file:
+        module_name = state.file.name
+        spec = importlib.util.spec_from_file_location(module_name, str(state.file))
+    elif state.module:
+        spec = importlib.util.find_spec(state.module)
+    if spec is None:
+        if state.file:
+            typer.echo(f"Could not import as Python file: {state.file}", err=True)
         else:
-            tool_args = args[1:]
+            typer.echo(f"Could not import as Python module: {state.module}", err=True)
+        sys.exit(1)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)  # type: ignore
+    obj = get_typer_from_module(module)
+    return obj
 
-        self._run_tool(cmd, tool_args)
 
-    def _run_tool(self, name: str, args: list[str]) -> None:
-        """Execute a tool."""
-        fn = self._tools[name]
-        meta = get_tool_meta(fn) or {}
+def maybe_add_run_to_cli(cli: click.Group) -> None:
+    if "run" not in cli.commands and (state.file or state.module):
+        obj = get_typer_from_state()
+        if obj:
+            obj._add_completion = False
+            click_obj = typer.main.get_command(obj)
+            click_obj.name = "run"
+            if not click_obj.help:
+                click_obj.help = "Run the provided Typer app."
+            cli.add_command(click_obj)
 
-        # Handle tool-specific flags
-        if "--manifest" in args:
-            manifest = generate_tool_manifest(fn, meta)
-            print(json.dumps(manifest, indent=2))
-            return
 
-        if "--help" in args:
-            self._print_tool_help(fn, meta)
-            return
+def print_version(ctx: click.Context, param: Option, value: bool) -> None:
+    if not value or ctx.resilient_parsing:
+        return
+    typer.echo(f"Typer version: {__version__}")
+    raise typer.Exit()
 
-        # Parse input
-        streaming = "--stream" in args
-        session_mode = "--session" in args
 
-        # Configure sampling if specified
-        if "--sample-via" in args:
-            idx = args.index("--sample-via")
-            if idx + 1 < len(args):
-                configure_sampling(args[idx + 1])
+@app.callback(cls=TyperCLIGroup, no_args_is_help=True)
+def callback(
+    ctx: typer.Context,
+    *,
+    path_or_module: str = typer.Argument(None),
+    app: str = typer.Option(None, help="The typer app object/variable to use."),
+    func: str = typer.Option(None, help="The function to convert to Typer."),
+    version: bool = typer.Option(
+        False,
+        "--version",
+        help="Print version and exit.",
+        callback=print_version,
+    ),
+) -> None:
+    """
+    Run Typer scripts with completion, without having to create a package.
 
-        # Extract JSON input or parse flags
-        json_input = None
-        for arg in args:
-            if arg.startswith("{"):
-                json_input = arg
-                break
+    You probably want to install completion for the typer command:
 
-        if "--validate" in args:
-            idx = args.index("--validate")
-            if idx + 1 < len(args):
-                json_input = args[idx + 1]
-            result = self._validate_input(fn, meta, json_input or "{}")
-            print(json.dumps(result))
-            return
+    $ typer --install-completion
 
-        # Build params
-        try:
-            params = self._parse_input(fn, meta, args, json_input)
-        except ValidationError as e:
-            print(json.dumps(Response.error("INVALID_INPUT", str(e), recoverable=True)))
-            return
-        except json.JSONDecodeError as e:
-            print(
-                json.dumps(
-                    Response.error(
-                        "INVALID_INPUT", f"Invalid JSON: {e}", recoverable=True
-                    )
-                )
+    https://typer.tiangolo.com/
+    """
+    maybe_update_state(ctx)
+
+
+def get_docs_for_click(
+    *,
+    obj: Command,
+    ctx: typer.Context,
+    indent: int = 0,
+    name: str = "",
+    call_prefix: str = "",
+    title: str | None = None,
+) -> str:
+    docs = "#" * (1 + indent)
+    command_name = name or obj.name
+    if call_prefix:
+        command_name = f"{call_prefix} {command_name}"
+    if not title:
+        title = f"`{command_name}`" if command_name else "CLI"
+    docs += f" {title}\n\n"
+    if obj.help:
+        docs += f"{_parse_html(obj.help)}\n\n"
+    usage_pieces = obj.collect_usage_pieces(ctx)
+    if usage_pieces:
+        docs += "**Usage**:\n\n"
+        docs += "```console\n"
+        docs += "$ "
+        if command_name:
+            docs += f"{command_name} "
+        docs += f"{' '.join(usage_pieces)}\n"
+        docs += "```\n\n"
+    args = []
+    opts = []
+    for param in obj.get_params(ctx):
+        rv = param.get_help_record(ctx)
+        if rv is not None:
+            if param.param_type_name == "argument":
+                args.append(rv)
+            elif param.param_type_name == "option":
+                opts.append(rv)
+    if args:
+        docs += "**Arguments**:\n\n"
+        for arg_name, arg_help in args:
+            docs += f"* `{arg_name}`"
+            if arg_help:
+                docs += f": {_parse_html(arg_help)}"
+            docs += "\n"
+        docs += "\n"
+    if opts:
+        docs += "**Options**:\n\n"
+        for opt_name, opt_help in opts:
+            docs += f"* `{opt_name}`"
+            if opt_help:
+                docs += f": {_parse_html(opt_help)}"
+            docs += "\n"
+        docs += "\n"
+    if obj.epilog:
+        docs += f"{obj.epilog}\n\n"
+    if isinstance(obj, Group):
+        group = obj
+        commands = group.list_commands(ctx)
+        if commands:
+            docs += "**Commands**:\n\n"
+            for command in commands:
+                command_obj = group.get_command(ctx, command)
+                assert command_obj
+                docs += f"* `{command_obj.name}`"
+                command_help = command_obj.get_short_help_str()
+                if command_help:
+                    docs += f": {_parse_html(command_help)}"
+                docs += "\n"
+            docs += "\n"
+        for command in commands:
+            command_obj = group.get_command(ctx, command)
+            assert command_obj
+            use_prefix = ""
+            if command_name:
+                use_prefix += f"{command_name}"
+            docs += get_docs_for_click(
+                obj=command_obj, ctx=ctx, indent=indent + 1, call_prefix=use_prefix
             )
-            return
+    return docs
 
-        # Handle reserved fields
-        input_obj = params if isinstance(params, ToolInput) else None
-        timeout_timer = None
 
-        if input_obj:
-            # Run pre_validate hook
-            try:
-                input_obj.pre_validate()
-            except ToolError as e:
-                print(json.dumps(e.to_response()))
-                return
+def _parse_html(input_text: str) -> str:
+    if not HAS_RICH:  # pragma: no cover
+        return input_text
+    from . import rich_utils
 
-            # Handle working_dir
-            try:
-                if hasattr(input_obj, "working_dir") and input_obj.working_dir:
-                    if not os.path.isdir(input_obj.working_dir):
-                        raise ToolError(
-                            ErrorCode.INVALID_PATH,
-                            f"Directory not found: {input_obj.working_dir}",
-                            recoverable=True,
-                        )
-                    os.chdir(input_obj.working_dir)
-            except ToolError as e:
-                print(json.dumps(e.to_response()))
-                return
+    return rich_utils.rich_to_html(input_text)
 
-            # Handle timeout
-            try:
-                if hasattr(input_obj, "timeout") and input_obj.timeout:
-                    if input_obj.timeout <= 0:
-                        raise ToolError(
-                            ErrorCode.INVALID_INPUT,
-                            "timeout must be positive",
-                            recoverable=True,
-                        )
-                    if input_obj.timeout > 600:  # 10 minutes max
-                        raise ToolError(
-                            ErrorCode.INVALID_INPUT,
-                            "timeout exceeds maximum (600 seconds)",
-                            recoverable=True,
-                        )
-                    timeout_timer = _setup_timeout(input_obj.timeout)
-            except ToolError as e:
-                print(json.dumps(e.to_response()))
-                return
 
-            # Handle dry_run
-            if hasattr(input_obj, "dry_run") and input_obj.dry_run:
-                print(
-                    json.dumps(
-                        Response.success(
-                            {"dry_run": True, "would_execute": input_obj.to_log_safe()}
-                        )
-                    )
-                )
-                return
+@utils_app.command()
+def docs(
+    ctx: typer.Context,
+    name: str = typer.Option("", help="The name of the CLI program to use in docs."),
+    output: Path | None = typer.Option(
+        None,
+        help="An output file to write docs to, like README.md.",
+        file_okay=True,
+        dir_okay=False,
+    ),
+    title: str | None = typer.Option(
+        None,
+        help="The title for the documentation page. If not provided, the name of "
+        "the program is used.",
+    ),
+) -> None:
+    """
+    Generate Markdown docs for a Typer app.
+    """
+    typer_obj = get_typer_from_state()
+    if not typer_obj:
+        typer.echo("No Typer app found", err=True)
+        raise typer.Abort()
+    click_obj = typer.main.get_command(typer_obj)
+    docs = get_docs_for_click(obj=click_obj, ctx=ctx, name=name, title=title)
+    clean_docs = f"{docs.strip()}\n"
+    if output:
+        output.write_text(clean_docs)
+        typer.echo(f"Docs saved to: {output}")
+    else:
+        typer.echo(clean_docs)
 
-        # Execute tool
-        try:
-            if meta.get("input_model"):
-                result = fn(params)
-            elif isinstance(params, dict):
-                result = fn(**params)
-            else:
-                result = fn(params)
 
-            # Handle different return types
-            # Auto-detect streaming/session mode based on tool metadata
-            if meta.get("streaming"):
-                if not streaming:
-                    raise ToolError(
-                        ErrorCode.INVALID_INPUT,
-                        "This tool requires --stream flag",
-                        suggestion="Add --stream to the command",
-                        recoverable=True,
-                    )
-                run_streaming_tool(result)
-            elif meta.get("session_mode"):
-                if not session_mode:
-                    raise ToolError(
-                        ErrorCode.INVALID_INPUT,
-                        "This tool requires --session flag",
-                        suggestion="Add --session to the command",
-                        recoverable=True,
-                    )
-                final = run_session_tool(result)
-                print(json.dumps(final))
-            elif isinstance(result, dict):
-                # Check if already a response envelope
-                if "status" in result:
-                    print(json.dumps(result))
-                else:
-                    print(json.dumps(Response.success(result)))
-            else:
-                print(json.dumps(Response.success({"result": result})))
-
-        except ToolError as e:
-            print(json.dumps(e.to_response()))
-        except Exception as e:
-            print(json.dumps(Response.error("INTERNAL", str(e), recoverable=False)))
-        finally:
-            # Cleanup timeout timer on Windows
-            if timeout_timer and platform.system() == "Windows":
-                timeout_timer.cancel()
-            # Cancel alarm on Unix
-            elif platform.system() != "Windows":
-                signal.alarm(0)
-
-    def _parse_input(
-        self, fn: Callable, meta: dict, args: list[str], json_input: str | None
-    ) -> Any:
-        """Parse input from JSON or CLI flags."""
-        input_model = meta.get("input_model")
-
-        if json_input:
-            data = json.loads(json_input)
-            if input_model:
-                return input_model(**data)
-            return data
-
-        # Parse CLI flags into dict
-        data = {}
-        i = 0
-        while i < len(args):
-            arg = args[i]
-            if arg.startswith("--") and arg not in (
-                "--stream",
-                "--session",
-                "--sample-via",
-                "--manifest",
-                "--help",
-                "--validate",
-            ):
-                key = arg[2:].replace("-", "_")
-                if i + 1 < len(args) and not args[i + 1].startswith("--"):
-                    value = args[i + 1]
-                    # Try to parse as JSON for complex types
-                    try:
-                        data[key] = json.loads(value)
-                    except json.JSONDecodeError:
-                        data[key] = value
-                    i += 2
-                else:
-                    data[key] = True
-                    i += 1
-            else:
-                i += 1
-
-        if input_model:
-            return input_model(**data)
-        return data
-
-    def _validate_input(self, fn: Callable, meta: dict, json_input: str) -> dict:
-        """Validate input without executing."""
-        try:
-            data = json.loads(json_input)
-            input_model = meta.get("input_model")
-
-            if input_model:
-                obj = input_model(**data)
-                obj.pre_validate()
-
-            return {"valid": True}
-        except ValidationError as e:
-            return {"valid": False, "errors": e.errors()}
-        except ToolError as e:
-            return {
-                "valid": False,
-                "errors": [{"code": e.code.value, "message": e.message}],
-            }
-        except Exception as e:
-            return {"valid": False, "errors": [{"message": str(e)}]}
-
-    def _print_discover(self) -> None:
-        """Print full discovery output."""
-        output = {
-            "name": self.name,
-            "version": self.version,
-            "tools": [],
-            "resources": [],
-            "prompts": [],
-        }
-
-        for name, fn in self._tools.items():
-            meta = get_tool_meta(fn) or {"summary": ""}
-            output["tools"].append(
-                {
-                    "name": name,
-                    "summary": meta.get("summary", ""),
-                    "streaming": meta.get("streaming", False),
-                    "session_mode": meta.get("session_mode", False),
-                }
-            )
-
-        for _pattern, fn in self._resources.items():
-            meta = get_resource_meta(fn) or {}
-            output["resources"].append(generate_resource_manifest(fn, meta))
-
-        for _name, fn in self._prompts.items():
-            meta = get_prompt_meta(fn) or {}
-            output["prompts"].append(generate_prompt_manifest(fn, meta))
-
-        print(json.dumps(output, indent=2))
-
-    def _print_tools(self) -> None:
-        """Print tools only."""
-        tools = []
-        for name, fn in self._tools.items():
-            meta = get_tool_meta(fn) or {}
-            tools.append({"name": name, "summary": meta.get("summary", "")})
-        print(json.dumps({"tools": tools}, indent=2))
-
-    def _print_resources(self) -> None:
-        """Print resources only."""
-        resources = []
-        for fn in self._resources.values():
-            meta = get_resource_meta(fn) or {}
-            resources.append(generate_resource_manifest(fn, meta))
-        print(json.dumps({"resources": resources}, indent=2))
-
-    def _print_prompts(self) -> None:
-        """Print prompts only."""
-        prompts = []
-        for fn in self._prompts.values():
-            meta = get_prompt_meta(fn) or {}
-            prompts.append(generate_prompt_manifest(fn, meta))
-        print(json.dumps({"prompts": prompts}, indent=2))
-
-    def _fetch_resource(self, uri: str) -> None:
-        """Fetch a resource by URI."""
-        import re
-
-        for pattern, fn in self._resources.items():
-            # Convert pattern to regex with proper escaping
-            # First, find all {placeholder} patterns
-            re.findall(r"\{(\w+)\}", pattern)
-            # Replace placeholders with temporary markers
-            temp_pattern = re.sub(r"\{(\w+)\}", "\x00\\1\x00", pattern)
-            # Escape all literal regex characters
-            escaped = re.escape(temp_pattern)
-            # Replace markers with named groups
-            regex_pattern = re.sub(r"\x00(\w+)\x00", r"(?P<\1>[^/]+)", escaped)
-            # Use fullmatch to require exact match (no extra trailing content)
-            match = re.fullmatch(regex_pattern, uri)
-
-            if match:
-                params = match.groupdict()
-                try:
-                    result = fn(**params)
-                    print(json.dumps(result))
-                except Exception as e:
-                    print(json.dumps(Response.error("INTERNAL", str(e))))
-                return
-
-        print(
-            json.dumps(
-                Response.error(
-                    "NOT_FOUND", f"No resource matches URI: {uri}", recoverable=True
-                )
-            )
-        )
-
-    def _render_prompt(self, name: str, json_args: str) -> None:
-        """Render a prompt."""
-        if name not in self._prompts:
-            print(
-                json.dumps(
-                    Response.error(
-                        "NOT_FOUND", f"Unknown prompt: {name}", recoverable=True
-                    )
-                )
-            )
-            return
-
-        try:
-            args = json.loads(json_args)
-            fn = self._prompts[name]
-            result = fn(**args)
-            print(json.dumps(result))
-        except Exception as e:
-            print(json.dumps(Response.error("INTERNAL", str(e))))
-
-    def _print_help(self) -> None:
-        """Print human-readable help."""
-        print(f"{self.name} v{self.version}")
-        print()
-        print("Usage:")
-        print(
-            f"  {self.name} --discover              Show all tools, resources, prompts"
-        )
-        print(f"  {self.name} <command> --manifest    Show command schema")
-        print(f"  {self.name} <command> '{{}}'          Execute with JSON input")
-        print(f"  {self.name} <command> --flag value  Execute with CLI flags")
-        print()
-        print("Commands:")
-        for name, fn in self._tools.items():
-            meta = get_tool_meta(fn) or {}
-            print(f"  {name:20} {meta.get('summary', '')}")
-
-    def _print_tool_help(self, fn: Callable, meta: dict) -> None:
-        """Print help for a specific tool."""
-        print(f"{fn.__name__} - {meta.get('summary', '')}")
-        print()
-        if fn.__doc__:
-            print(fn.__doc__)
-            print()
-
-        schema = extract_schema_from_function(fn, meta.get("input_model"))
-        props = schema.get("properties", {})
-        required = schema.get("required", [])
-
-        if props:
-            print("Parameters:")
-            for name, prop in props.items():
-                req = "*" if name in required else " "
-                default = f" (default: {prop['default']})" if "default" in prop else ""
-                desc = prop.get("description", "")
-                print(
-                    f"  {req} --{name:15} {prop.get('type', 'string'):10} {desc}{default}"
-                )
+def main() -> Any:
+    return app()
