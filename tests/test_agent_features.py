@@ -1,6 +1,5 @@
 import json
 import sys
-from io import StringIO
 
 from toolable import Toolable
 
@@ -121,7 +120,7 @@ def test_discover_includes_resources(monkeypatch, capsys):
 
 def test_json_execution_handles_tool_error(monkeypatch, capsys):
     """Test JSON execution properly handles ToolError."""
-    from toolable.errors import ToolError, ErrorCode
+    from toolable.errors import ErrorCode, ToolError
 
     app = Toolable()
 
@@ -145,7 +144,7 @@ def test_json_execution_handles_tool_error(monkeypatch, capsys):
 
 def test_streaming_command_execution(monkeypatch, capsys):
     """Test streaming command execution with JSON input."""
-    from toolable.streaming import stream, StreamEvent
+    from toolable.streaming import StreamEvent, stream
 
     app = Toolable()
 
@@ -178,7 +177,7 @@ def test_streaming_command_execution(monkeypatch, capsys):
 
 def test_discover_detects_streaming_mode(monkeypatch, capsys):
     """Test discovery correctly identifies streaming commands."""
-    from toolable.streaming import stream, StreamEvent
+    from toolable.streaming import StreamEvent, stream
 
     app = Toolable()
 
