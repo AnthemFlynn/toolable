@@ -1,6 +1,6 @@
 # Toolable Feature Showcase
 
-Complete demonstration of all Toolable features: **Typer CLI + MCP-like agent capabilities**.
+Complete demonstration of all Toolable features for building agent-callable CLI tools.
 
 ## 🎯 Quick Start
 

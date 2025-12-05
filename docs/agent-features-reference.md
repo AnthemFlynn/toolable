@@ -1,4 +1,4 @@
-# MCP-like Features Status
+# agent Features Status
 
 ## ✅ Fully Working (No Integration Needed)
 
