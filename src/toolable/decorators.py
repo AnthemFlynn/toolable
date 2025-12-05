@@ -14,6 +14,7 @@ def resource(
     mime_types: list[str] | None = None,
 ):
     """Decorator to mark a function as a resource provider."""
+
     def decorator(fn: Callable) -> Callable:
         _RESOURCE_REGISTRY[fn] = {
             "uri_pattern": uri_pattern,
@@ -36,6 +37,7 @@ def prompt(
     arguments: dict[str, str],
 ):
     """Decorator to mark a function as a prompt template."""
+
     def decorator(fn: Callable) -> Callable:
         _PROMPT_REGISTRY[fn] = {
             "summary": summary,
@@ -86,7 +88,7 @@ def toolable(summary: str, **kwargs):
         "@toolable decorator is deprecated. Use @app.command() instead. "
         "See migration guide for details.",
         DeprecationWarning,
-        stacklevel=2
+        stacklevel=2,
     )
 
     def decorator(fn: Callable) -> Callable:

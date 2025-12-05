@@ -88,7 +88,9 @@ def test_json_input_executes_command(monkeypatch, capsys):
         # Return dict for agent mode
         return {"sum": result}
 
-    monkeypatch.setattr(sys, "argv", ["app.py", '{"command": "add", "params": {"a": 5, "b": 3}}'])
+    monkeypatch.setattr(
+        sys, "argv", ["app.py", '{"command": "add", "params": {"a": 5, "b": 3}}']
+    )
     app()
 
     captured = capsys.readouterr()
@@ -131,7 +133,9 @@ def test_json_execution_handles_tool_error(monkeypatch, capsys):
             raise ToolError(ErrorCode.INVALID_INPUT, "Cannot divide by zero")
         return {"result": a / b}
 
-    monkeypatch.setattr(sys, "argv", ["app.py", '{"command": "divide", "params": {"a": 10, "b": 0}}'])
+    monkeypatch.setattr(
+        sys, "argv", ["app.py", '{"command": "divide", "params": {"a": 10, "b": 0}}']
+    )
     app()
 
     captured = capsys.readouterr()
@@ -152,10 +156,14 @@ def test_streaming_command_execution(monkeypatch, capsys):
     def process_items(count: int) -> stream:
         """Process items with streaming progress."""
         for i in range(count):
-            yield StreamEvent.progress(f"Processing item {i+1}/{count}", percent=int((i+1)/count * 100))
+            yield StreamEvent.progress(
+                f"Processing item {i+1}/{count}", percent=int((i + 1) / count * 100)
+            )
         yield StreamEvent.result({"status": "success", "result": {"processed": count}})
 
-    monkeypatch.setattr(sys, "argv", ["app.py", '{"command": "process_items", "params": {"count": 3}}'])
+    monkeypatch.setattr(
+        sys, "argv", ["app.py", '{"command": "process_items", "params": {"count": 3}}']
+    )
     app()
 
     captured = capsys.readouterr()
@@ -198,7 +206,9 @@ def test_discover_detects_streaming_mode(monkeypatch, capsys):
     result = json.loads(captured.out)
 
     normal_tool = next(t for t in result["tools"] if t["name"] == "normal_command")
-    streaming_tool = next(t for t in result["tools"] if t["name"] == "streaming_command")
+    streaming_tool = next(
+        t for t in result["tools"] if t["name"] == "streaming_command"
+    )
 
     assert normal_tool["streaming"] is False
     assert streaming_tool["streaming"] is True

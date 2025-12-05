@@ -2,22 +2,21 @@
 """Complete demo showing ALL Toolable features working together."""
 
 from toolable import (
-    Toolable,
-    resource,
     StreamEvent,
-    stream,
+    Toolable,
     notify,
+    stream,
 )
 
 app = Toolable(
-    name="complete-tool",
-    help="Complete demo of Toolable: Typer + MCP features"
+    name="complete-tool", help="Complete demo of Toolable: Typer + MCP features"
 )
 
 
 # ============================================================================
 # 1. NORMAL COMMANDS - Just like Typer
 # ============================================================================
+
 
 @app.command()
 def hello(name: str, excited: bool = False):
@@ -42,7 +41,7 @@ def calculate(a: float, b: float, operation: str = "add"):
 
     result = operations.get(operation)
     if result is None:
-        return {"error": f"Invalid operation or division by zero"}
+        return {"error": "Invalid operation or division by zero"}
 
     return {"operation": operation, "a": a, "b": b, "result": result}
 
@@ -50,6 +49,7 @@ def calculate(a: float, b: float, operation: str = "add"):
 # ============================================================================
 # 2. STREAMING - One-way event emission
 # ============================================================================
+
 
 @app.command()
 def process_batch(items: int = 5, delay: float = 0.1) -> stream:
@@ -62,8 +62,7 @@ def process_batch(items: int = 5, delay: float = 0.1) -> stream:
     # Emit progress as we work
     for i in range(items):
         yield StreamEvent.progress(
-            f"Processing item {i+1}/{items}",
-            percent=int((i+1)/items * 100)
+            f"Processing item {i+1}/{items}", percent=int((i + 1) / items * 100)
         )
         time.sleep(delay)
 
@@ -71,18 +70,18 @@ def process_batch(items: int = 5, delay: float = 0.1) -> stream:
     yield StreamEvent.artifact("batch_results.json", "/tmp/batch_results.json")
 
     # Emit final result
-    yield StreamEvent.result({
-        "status": "success",
-        "result": {
-            "processed": items,
-            "time_taken": items * delay
+    yield StreamEvent.result(
+        {
+            "status": "success",
+            "result": {"processed": items, "time_taken": items * delay},
         }
-    })
+    )
 
 
 # ============================================================================
 # 3. NOTIFICATIONS - Side-channel progress to stderr
 # ============================================================================
+
 
 @app.command()
 def long_task(steps: int = 3):
@@ -90,8 +89,9 @@ def long_task(steps: int = 3):
     notify.log("Starting long task...", level="info")
 
     for i in range(steps):
-        notify.progress(f"Step {i+1}/{steps}", percent=int((i+1)/steps * 100))
+        notify.progress(f"Step {i+1}/{steps}", percent=int((i + 1) / steps * 100))
         import time
+
         time.sleep(0.2)
 
     notify.log("Task completed successfully", level="info")
@@ -102,6 +102,7 @@ def long_task(steps: int = 3):
 # ============================================================================
 # 4. RESOURCES - Expose data endpoints
 # ============================================================================
+
 
 @app.resource(uri_pattern="/items/{item_id}", summary="Get item by ID")
 def get_item(item_id: str):
@@ -121,16 +122,17 @@ app.register_resource(get_item)
 # 5. ERROR HANDLING - Structured errors
 # ============================================================================
 
+
 @app.command()
 def divide(a: float, b: float):
     """Divide with proper error handling."""
-    from toolable import ToolError, ErrorCode
+    from toolable import ErrorCode, ToolError
 
     if b == 0:
         raise ToolError(
             ErrorCode.INVALID_INPUT,
             "Cannot divide by zero",
-            suggestion="Use a non-zero divisor"
+            suggestion="Use a non-zero divisor",
         )
 
     return {"result": a / b}

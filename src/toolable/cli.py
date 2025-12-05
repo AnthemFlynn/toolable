@@ -70,11 +70,12 @@ class AgentCLI:
 
     def __init__(self, name, tools=None, version="0.1.0"):
         import warnings
+
         warnings.warn(
             "AgentCLI is deprecated. Use Toolable class instead. "
             "See migration guide for details.",
             DeprecationWarning,
-            stacklevel=2
+            stacklevel=2,
         )
         # Minimal shim - just store for error messages
         self.name = name if isinstance(name, str) else name.__name__

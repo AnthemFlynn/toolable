@@ -1,7 +1,15 @@
 #!/usr/bin/env python
 """Demo showing MCP-like features: streaming, sessions, sampling, notifications."""
 
-from toolable import Toolable, StreamEvent, SessionEvent, sample, notify, stream, session
+from toolable import (
+    SessionEvent,
+    StreamEvent,
+    Toolable,
+    notify,
+    sample,
+    session,
+    stream,
+)
 
 app = Toolable(name="mcp-demo", help="Demo of MCP-like agent features")
 
@@ -10,15 +18,19 @@ app = Toolable(name="mcp-demo", help="Demo of MCP-like agent features")
 # 1. NOTIFICATIONS - Working NOW (stderr output)
 # ============================================================================
 
+
 @app.command()
 def process_with_notifications(items: int = 5):
     """Process items with progress notifications to stderr."""
     notify.log("Starting processing", level="info")
 
     for i in range(items):
-        notify.progress(f"Processing item {i+1}/{items}", percent=int((i+1)/items * 100))
+        notify.progress(
+            f"Processing item {i+1}/{items}", percent=int((i + 1) / items * 100)
+        )
         # Simulate work
         import time
+
         time.sleep(0.1)
 
     notify.log("Processing complete", level="info")
@@ -29,6 +41,7 @@ def process_with_notifications(items: int = 5):
 # 2. STREAMING - Needs Integration (Task 14)
 # ============================================================================
 
+
 @app.command()
 def streaming_example(count: int = 3) -> stream:
     """Stream progress events as the task executes.
@@ -38,21 +51,23 @@ def streaming_example(count: int = 3) -> stream:
     """
     # Emit progress events
     for i in range(count):
-        yield StreamEvent.progress(f"Processing step {i+1}/{count}", percent=int((i+1)/count * 100))
+        yield StreamEvent.progress(
+            f"Processing step {i+1}/{count}", percent=int((i + 1) / count * 100)
+        )
 
     # Emit artifacts
     yield StreamEvent.artifact("result.json", "/tmp/result.json")
 
     # Emit final result
-    yield StreamEvent.result({
-        "status": "success",
-        "result": {"steps": count, "completed": True}
-    })
+    yield StreamEvent.result(
+        {"status": "success", "result": {"steps": count, "completed": True}}
+    )
 
 
 # ============================================================================
 # 3. SESSION MODE - Needs Integration (Task 14)
 # ============================================================================
+
 
 @app.command()
 def interactive_chat() -> session:
@@ -87,6 +102,7 @@ def interactive_chat() -> session:
 # 4. SAMPLING - Working NOW (LLM callback)
 # ============================================================================
 
+
 @app.command()
 def use_llm_sampling(prompt: str):
     """Call back to the LLM during execution.
@@ -96,19 +112,11 @@ def use_llm_sampling(prompt: str):
     notify.log("Requesting LLM completion...", level="info")
 
     # Request completion from the calling agent
-    response = sample(
-        prompt=prompt,
-        max_tokens=100,
-        temperature=0.7
-    )
+    response = sample(prompt=prompt, max_tokens=100, temperature=0.7)
 
     notify.log("LLM response received", level="info")
 
-    return {
-        "prompt": prompt,
-        "response": response,
-        "status": "success"
-    }
+    return {"prompt": prompt, "response": response, "status": "success"}
 
 
 if __name__ == "__main__":

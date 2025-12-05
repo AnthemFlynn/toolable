@@ -46,7 +46,10 @@ def _split_opt(opt: str) -> tuple[str, str]:
 def _typer_param_setup_autocompletion_compat(
     self: click.Parameter,
     *,
-    autocompletion: Callable[[click.Context, list[str], str], list[tuple[str, str] | str]] | None = None,
+    autocompletion: Callable[
+        [click.Context, list[str], str], list[tuple[str, str] | str]
+    ]
+    | None = None,
 ) -> None:
     if self._custom_shell_complete is not None:
         import warnings
@@ -260,7 +263,11 @@ class TyperArgument(click.core.Argument):
         envvar: str | list[str] | None = None,
         # Note that shell_complete is not fully supported and will be removed in future versions
         # TODO: Remove shell_complete in a future version (after 0.16.0)
-        shell_complete: Callable[[click.Context, click.Parameter, str], list["click.shell_completion.CompletionItem"] | list[str]] | None = None,
+        shell_complete: Callable[
+            [click.Context, click.Parameter, str],
+            list["click.shell_completion.CompletionItem"] | list[str],
+        ]
+        | None = None,
         autocompletion: Callable[..., Any] | None = None,
         # TyperArgument
         show_default: bool | str = True,
@@ -410,7 +417,11 @@ class TyperOption(click.core.Option):
         envvar: str | list[str] | None = None,
         # Note that shell_complete is not fully supported and will be removed in future versions
         # TODO: Remove shell_complete in a future version (after 0.16.0)
-        shell_complete: Callable[[click.Context, click.Parameter, str], list["click.shell_completion.CompletionItem"] | list[str]] | None = None,
+        shell_complete: Callable[
+            [click.Context, click.Parameter, str],
+            list["click.shell_completion.CompletionItem"] | list[str],
+        ]
+        | None = None,
         autocompletion: Callable[..., Any] | None = None,
         # Option
         show_default: bool | str = False,

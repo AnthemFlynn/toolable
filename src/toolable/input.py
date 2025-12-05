@@ -38,7 +38,7 @@ class ToolInput(BaseModel):
             "ToolInput is deprecated. Use type hints in function signatures instead. "
             "See migration guide for details.",
             DeprecationWarning,
-            stacklevel=2
+            stacklevel=2,
         )
         super().__init__(**data)
 

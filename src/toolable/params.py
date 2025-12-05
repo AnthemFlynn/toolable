@@ -22,7 +22,11 @@ def Option(
     envvar: str | list[str] | None = None,
     # Note that shell_complete is not fully supported and will be removed in future versions
     # TODO: Remove shell_complete in a future version (after 0.16.0)
-    shell_complete: Callable[[click.Context, click.Parameter, str], list["click.shell_completion.CompletionItem"] | list[str]] | None = None,
+    shell_complete: Callable[
+        [click.Context, click.Parameter, str],
+        list["click.shell_completion.CompletionItem"] | list[str],
+    ]
+    | None = None,
     autocompletion: Callable[..., Any] | None = None,
     default_factory: Callable[[], Any] | None = None,
     # Custom type
@@ -83,7 +87,11 @@ def Option(
     envvar: str | list[str] | None = None,
     # Note that shell_complete is not fully supported and will be removed in future versions
     # TODO: Remove shell_complete in a future version (after 0.16.0)
-    shell_complete: Callable[[click.Context, click.Parameter, str], list["click.shell_completion.CompletionItem"] | list[str]] | None = None,
+    shell_complete: Callable[
+        [click.Context, click.Parameter, str],
+        list["click.shell_completion.CompletionItem"] | list[str],
+    ]
+    | None = None,
     autocompletion: Callable[..., Any] | None = None,
     default_factory: Callable[[], Any] | None = None,
     # Custom type
@@ -142,7 +150,11 @@ def Option(
     envvar: str | list[str] | None = None,
     # Note that shell_complete is not fully supported and will be removed in future versions
     # TODO: Remove shell_complete in a future version (after 0.16.0)
-    shell_complete: Callable[[click.Context, click.Parameter, str], list["click.shell_completion.CompletionItem"] | list[str]] | None = None,
+    shell_complete: Callable[
+        [click.Context, click.Parameter, str],
+        list["click.shell_completion.CompletionItem"] | list[str],
+    ]
+    | None = None,
     autocompletion: Callable[..., Any] | None = None,
     default_factory: Callable[[], Any] | None = None,
     # Custom type
@@ -259,7 +271,11 @@ def Argument(
     envvar: str | list[str] | None = None,
     # Note that shell_complete is not fully supported and will be removed in future versions
     # TODO: Remove shell_complete in a future version (after 0.16.0)
-    shell_complete: Callable[[click.Context, click.Parameter, str], list["click.shell_completion.CompletionItem"] | list[str]] | None = None,
+    shell_complete: Callable[
+        [click.Context, click.Parameter, str],
+        list["click.shell_completion.CompletionItem"] | list[str],
+    ]
+    | None = None,
     autocompletion: Callable[..., Any] | None = None,
     default_factory: Callable[[], Any] | None = None,
     # Custom type
@@ -311,7 +327,11 @@ def Argument(
     envvar: str | list[str] | None = None,
     # Note that shell_complete is not fully supported and will be removed in future versions
     # TODO: Remove shell_complete in a future version (after 0.16.0)
-    shell_complete: Callable[[click.Context, click.Parameter, str], list["click.shell_completion.CompletionItem"] | list[str]] | None = None,
+    shell_complete: Callable[
+        [click.Context, click.Parameter, str],
+        list["click.shell_completion.CompletionItem"] | list[str],
+    ]
+    | None = None,
     autocompletion: Callable[..., Any] | None = None,
     default_factory: Callable[[], Any] | None = None,
     # Custom type
@@ -361,7 +381,11 @@ def Argument(
     envvar: str | list[str] | None = None,
     # Note that shell_complete is not fully supported and will be removed in future versions
     # TODO: Remove shell_complete in a future version (after 0.16.0)
-    shell_complete: Callable[[click.Context, click.Parameter, str], list["click.shell_completion.CompletionItem"] | list[str]] | None = None,
+    shell_complete: Callable[
+        [click.Context, click.Parameter, str],
+        list["click.shell_completion.CompletionItem"] | list[str],
+    ]
+    | None = None,
     autocompletion: Callable[..., Any] | None = None,
     default_factory: Callable[[], Any] | None = None,
     # Custom type

@@ -310,19 +310,24 @@ class Toolable:
             )
         )
 
-    def resource(self, uri_pattern: str, summary: str, mime_types: list[str] | None = None):
+    def resource(
+        self, uri_pattern: str, summary: str, mime_types: list[str] | None = None
+    ):
         """Register a resource provider."""
         from toolable.decorators import resource as resource_decorator
+
         return resource_decorator(uri_pattern, summary, mime_types)
 
     def prompt_template(self, summary: str, arguments: dict[str, str]):
         """Register a prompt template."""
         from toolable.decorators import prompt as prompt_decorator
+
         return prompt_decorator(summary, arguments)
 
     def register_resource(self, fn: Callable) -> None:
         """Register a resource function."""
         from toolable.decorators import get_resource_meta
+
         meta = get_resource_meta(fn)
         if not meta:
             raise ValueError(f"{fn.__name__} is not decorated with @resource")
@@ -331,6 +336,7 @@ class Toolable:
     def register_prompt(self, fn: Callable) -> None:
         """Register a prompt function."""
         from toolable.decorators import get_prompt_meta
+
         meta = get_prompt_meta(fn)
         if not meta:
             raise ValueError(f"{fn.__name__} is not decorated with @prompt")
@@ -359,34 +365,40 @@ class Toolable:
             type_hints = get_type_hints(callback)
             return_type = type_hints.get("return", None)
 
-            tools.append({
-                "name": command_info.name or callback.__name__,
-                "summary": summary,
-                "streaming": return_type == stream,
-                "session_mode": return_type == session,
-            })
+            tools.append(
+                {
+                    "name": command_info.name or callback.__name__,
+                    "summary": summary,
+                    "streaming": return_type == stream,
+                    "session_mode": return_type == session,
+                }
+            )
 
         # Extract resources
         resources = []
         for uri_pattern, fn in self._resources.items():
             meta = get_resource_meta(fn)
             if meta:
-                resources.append({
-                    "uri_pattern": uri_pattern,
-                    "summary": meta["summary"],
-                    "mime_types": meta.get("mime_types", []),
-                })
+                resources.append(
+                    {
+                        "uri_pattern": uri_pattern,
+                        "summary": meta["summary"],
+                        "mime_types": meta.get("mime_types", []),
+                    }
+                )
 
         # Extract prompts
         prompts = []
         for name, fn in self._prompts.items():
             meta = get_prompt_meta(fn)
             if meta:
-                prompts.append({
-                    "name": name,
-                    "summary": meta["summary"],
-                    "arguments": meta.get("arguments", {}),
-                })
+                prompts.append(
+                    {
+                        "name": name,
+                        "summary": meta["summary"],
+                        "arguments": meta.get("arguments", {}),
+                    }
+                )
 
         result = {
             "name": self.info.name or "tool",
@@ -414,7 +426,11 @@ class Toolable:
                 break
 
         if not command_info:
-            print(json.dumps(Response.error("NOT_FOUND", f"Command '{command_name}' not found")))
+            print(
+                json.dumps(
+                    Response.error("NOT_FOUND", f"Command '{command_name}' not found")
+                )
+            )
             return
 
         # Extract schema from function signature
@@ -493,11 +509,15 @@ class Toolable:
             params = data.get("params", {})
 
             if not command_name:
-                print(json.dumps(Response.error(
-                    "INVALID_INPUT",
-                    "JSON must include 'command' field",
-                    suggestion='Use format: {"command": "name", "params": {...}}'
-                )))
+                print(
+                    json.dumps(
+                        Response.error(
+                            "INVALID_INPUT",
+                            "JSON must include 'command' field",
+                            suggestion='Use format: {"command": "name", "params": {...}}',
+                        )
+                    )
+                )
                 return
 
             # Find command
@@ -508,11 +528,15 @@ class Toolable:
                     break
 
             if not command_info:
-                print(json.dumps(Response.error(
-                    "NOT_FOUND",
-                    f"Command '{command_name}' not found",
-                    recoverable=True
-                )))
+                print(
+                    json.dumps(
+                        Response.error(
+                            "NOT_FOUND",
+                            f"Command '{command_name}' not found",
+                            recoverable=True,
+                        )
+                    )
+                )
                 return
 
             # Execute command with params
@@ -529,7 +553,9 @@ class Toolable:
                 return_type = type_hints.get("return", None)
 
                 # Detect streaming mode
-                if return_type == stream or (hasattr(result, '__next__') and return_type != session):
+                if return_type == stream or (
+                    hasattr(result, "__next__") and return_type != session
+                ):
                     run_streaming_tool(result)
                     return
 
@@ -542,23 +568,29 @@ class Toolable:
                 if isinstance(result, dict) and "status" in result:
                     print(json.dumps(result))
                 else:
-                    print(json.dumps(Response.success(result if isinstance(result, dict) else {"result": result})))
+                    print(
+                        json.dumps(
+                            Response.success(
+                                result
+                                if isinstance(result, dict)
+                                else {"result": result}
+                            )
+                        )
+                    )
 
             except ToolError as e:
                 print(json.dumps(e.to_response()))
             except Exception as e:
-                print(json.dumps(Response.error(
-                    "INTERNAL",
-                    str(e),
-                    recoverable=False
-                )))
+                print(json.dumps(Response.error("INTERNAL", str(e), recoverable=False)))
 
         except json.JSONDecodeError as e:
-            print(json.dumps(Response.error(
-                "INVALID_INPUT",
-                f"Invalid JSON: {e}",
-                recoverable=True
-            )))
+            print(
+                json.dumps(
+                    Response.error(
+                        "INVALID_INPUT", f"Invalid JSON: {e}", recoverable=True
+                    )
+                )
+            )
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         # Check for agent flags BEFORE normal Typer execution
@@ -734,9 +766,9 @@ def get_group_from_info(
     suggest_commands: bool,
     rich_markup_mode: MarkupMode,
 ) -> TyperGroup:
-    assert group_info.toolable_instance, (
-        "A Toolable instance is needed to generate a Click Group"
-    )
+    assert (
+        group_info.toolable_instance
+    ), "A Toolable instance is needed to generate a Click Group"
     commands: dict[str, click.Command] = {}
     for command_info in group_info.toolable_instance.registered_commands:
         command = get_command_from_info(
@@ -1069,9 +1101,7 @@ def get_click_type(
     raise RuntimeError(f"Type not yet supported: {annotation}")  # pragma: no cover
 
 
-def lenient_issubclass(
-    cls: Any, class_or_tuple: AnyType | tuple[AnyType, ...]
-) -> bool:
+def lenient_issubclass(cls: Any, class_or_tuple: AnyType | tuple[AnyType, ...]) -> bool:
     return isinstance(cls, type) and issubclass(cls, class_or_tuple)
 
 
@@ -1119,16 +1149,16 @@ def get_click_param(
         # Handle Tuples and Lists
         if lenient_issubclass(origin, list):
             main_type = get_args(main_type)[0]
-            assert not get_origin(main_type), (
-                "List types with complex sub-types are not currently supported"
-            )
+            assert not get_origin(
+                main_type
+            ), "List types with complex sub-types are not currently supported"
             is_list = True
         elif lenient_issubclass(origin, tuple):  # type: ignore
             types = []
             for type_ in get_args(main_type):
-                assert not get_origin(type_), (
-                    "Tuple types with complex sub-types are not currently supported"
-                )
+                assert not get_origin(
+                    type_
+                ), "Tuple types with complex sub-types are not currently supported"
                 types.append(
                     get_click_type(annotation=type_, parameter_info=parameter_info)
                 )

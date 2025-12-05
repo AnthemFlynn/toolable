@@ -1,12 +1,9 @@
 #!/usr/bin/env python
 """Demo tool showing Toolable features for both humans and AI agents."""
 
-from toolable import Toolable, resource
+from toolable import Toolable
 
-app = Toolable(
-    name="demo-tool",
-    help="Demo tool with human CLI and agent features"
-)
+app = Toolable(name="demo-tool", help="Demo tool with human CLI and agent features")
 
 
 @app.command()
